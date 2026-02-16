@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Default (Midnight) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --accent-primary: #38bdf8;
+  /* Sky Blue */
+  --accent-secondary: #818cf8;
+  /* Indigo */
+  --accent-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --glass: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(56, 189, 248, 0.3);
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+}
+
+/* Light Theme */
+.theme-light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --accent-primary: #2563eb;
+  --accent-secondary: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #2563eb, #4f46e5);
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.2);
+}
+
+/* Forest Theme */
+.theme-forest {
+  --bg-primary: #052e16;
+  --bg-secondary: #064e3b;
+  --accent-primary: #34d399;
+  --accent-secondary: #10b981;
+  --accent-gradient: linear-gradient(135deg, #34d399, #10b981);
+  --text-primary: #ecfdf5;
+  --text-secondary: #6ee7b7;
+  --glass: rgba(5, 46, 22, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --shadow-glow: 0 0 20px rgba(52, 211, 153, 0.2);
+}
+
+/* Cyber Theme */
+.theme-cyber {
+  --bg-primary: #09090b;
+  --bg-secondary: #18181b;
+  --accent-primary: #d946ef;
+  --accent-secondary: #8b5cf6;
+  --accent-gradient: linear-gradient(135deg, #d946ef, #8b5cf6);
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --glass: rgba(9, 9, 11, 0.8);
+  --shadow-glow: 0 0 20px rgba(217, 70, 239, 0.3);
+}
+
+/* Sunset Theme */
+.theme-sunset {
+  --bg-primary: #451a03;
+  --bg-secondary: #78350f;
+  --accent-primary: #fb923c;
+  --accent-secondary: #db2777;
+  --accent-gradient: linear-gradient(135deg, #fb923c, #db2777);
+  --text-primary: #fff7ed;
+  --text-secondary: #fdba74;
+  --glass: rgba(69, 26, 3, 0.7);
+  --shadow-glow: 0 0 20px rgba(251, 146, 60, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.2s ease;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animations */
+.glass-panel {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+  transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gradient-text {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
