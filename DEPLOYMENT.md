@@ -23,7 +23,7 @@ The application relies on environment variables for API endpoints and third-part
 2.  **Add the following variables**:
 
     ```env
-    VITE_API_BASE_URL=https://vekewcer3e.execute-api.us-east-1.amazonaws.com
+    VITE_API_BASE_URL=https://YOUR_API_ENDPOINT.amazonaws.com
     VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com
     ```
 
@@ -53,16 +53,16 @@ npm run build
 Sync the contents of the `dist` folder to your S3 hosting bucket. The `--delete` flag removes old files that are no longer needed.
 
 ```powershell
-aws s3 sync dist s3://practiceyourspeech --delete
+aws s3 sync dist s3://YOUR_S3_BUCKET_NAME --delete
 ```
 
 ### 4. Invalidate CloudFront Cache
 To ensure users see the latest version immediately (bypassing the CDN cache), create an invalidation.
 
-*   **Distribution ID**: `E16LNC06XBNOCK` (Found in AWS CloudFront Console)
+*   **Distribution ID**: Found in your AWS CloudFront Console or `.env` file.
 
 ```powershell
-aws cloudfront create-invalidation --distribution-id E16LNC06XBNOCK --paths "/*"
+aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
 ```
 
 ---
@@ -72,7 +72,7 @@ aws cloudfront create-invalidation --distribution-id E16LNC06XBNOCK --paths "/*"
 You can run this single command chain in PowerShell to perform the full deployment:
 
 ```powershell
-npm run build; if ($?) { aws s3 sync dist s3://practiceyourspeech --delete; aws cloudfront create-invalidation --distribution-id E16LNC06XBNOCK --paths "/*" }
+npm run build; if ($?) { aws s3 sync dist s3://YOUR_S3_BUCKET_NAME --delete; aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*" }
 ```
 
 ---
@@ -81,7 +81,7 @@ npm run build; if ($?) { aws s3 sync dist s3://practiceyourspeech --delete; aws 
 
 ### "Access Denied" on S3 Upload
 *   **Cause**: AWS CLI credentials are missing or lack permission.
-*   **Solution**: Run `aws configure` again or check if your IAM user has `s3:PutObject` and `s3:ListBucket` permissions for the `practiceyourspeech` bucket.
+*   **Solution**: Run `aws configure` again or check if your IAM user has `s3:PutObject` and `s3:ListBucket` permissions for the target bucket.
 
 ### "Vite requires Node.js version..."
 *   **Cause**: You are using an outdated version of Node.js.
@@ -93,5 +93,5 @@ npm run build; if ($?) { aws s3 sync dist s3://practiceyourspeech --delete; aws 
 
 ## 🌐 Domain Information
 
-*   **CloudFront URL**: `https://d1kjyzh2fecnyq.cloudfront.net`
-*   **Custom Domain**: `https://practiceyourspeech.com` (Once DNS propagation is complete)
+*   **CloudFront URL**: Found in AWS Console
+*   **Custom Domain**: `https://yourdomain.com`

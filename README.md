@@ -8,7 +8,7 @@ We use **AWS CloudFront** and **S3** to host the frontend securely.
 
 ### 1. Initial Deployment (Already Completed)
 The application has been deployed to the following CloudFront URL:
-👉 **[https://d1kjyzh2fecnyq.cloudfront.net](https://d1kjyzh2fecnyq.cloudfront.net)**
+👉 **[Live Site Link](https://d1kjyzh2fecnyq.cloudfront.net)** *(See `.env` for the URL)*
 
 ### 2. How to Update the Frontend
 When you make changes to the React code, follow these steps to deploy the update:
@@ -22,14 +22,14 @@ When you make changes to the React code, follow these steps to deploy the update
 2.  **Upload to S3:**
     Use the AWS CLI to sync the `dist` folder to your S3 bucket.
     ```bash
-    aws s3 sync dist s3://practiceyourspeech
+    aws s3 sync dist s3://YOUR_S3_BUCKET_NAME
     ```
     *(Note: You do NOT need to run `deploy_cf.py` again, as that would create a duplicate CloudFront distribution.)*
 
 3.  **Invalidate CloudFront Cache (Optional but Recommended):**
     To ensure users see the changes immediately:
     ```bash
-    aws cloudfront create-invalidation --distribution-id E16LNC06XBNOCK --paths "/*"
+    aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
     ```
 
 ### 3. Custom Domain Setup (`practiceyourspeech.com`)
@@ -53,13 +53,9 @@ To point your custom domain to the application:
 
 ### Google OAuth
 *   **Client ID:** Managed in `src/config.js` (via `.env`).
-*   **Authorized Origins:** You must add your CloudFront domain (`https://d1kjyzh2fecnyq.cloudfront.net`) to the **Authorized JavaScript origins** in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+*   **Authorized Origins:** You must add your production domain(s) to the **Authorized JavaScript origins** in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 
-### Backend Security (CORS)
-The backend API (`https://vekewcer3e...`) allows requests **only** from:
-*   `http://localhost:5173` (Local Development)
-*   `https://d1kjyzh2fecnyq.cloudfront.net` (CloudFront)
-*   `https://practiceyourspeech.com` (Custom Domain - *Once configured*)
+The backend API allows requests **only** from authorized domains (localhost and your production domains). See backend configuration for details.
 
 If you access the API from any other domain, it will be blocked.
 
