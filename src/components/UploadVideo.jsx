@@ -19,15 +19,29 @@ const UploadVideo = ({ user, onUploadSuccess }) => {
                 setFile(null);
                 return;
             }
-            // Validate file size (e.g., max 100MB)
-            if (selectedFile.size > 100 * 1024 * 1024) {
-                setErrorMessage('File size exceeds 100MB limit.');
+
+            // check duration
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function () {
+                window.URL.revokeObjectURL(video.src);
+                if (video.duration > 601) {
+                    setErrorMessage('Video duration exceeds 10 minutes.');
+                    setFile(null);
+                } else if (selectedFile.size > 500 * 1024 * 1024) {
+                    setErrorMessage('File size exceeds 500MB limit.');
+                    setFile(null);
+                } else {
+                    setFile(selectedFile);
+                    setErrorMessage('');
+                    setUploadStatus('idle');
+                }
+            };
+            video.onerror = () => {
+                setErrorMessage('Invalid video file.');
                 setFile(null);
-                return;
             }
-            setFile(selectedFile);
-            setErrorMessage('');
-            setUploadStatus('idle');
+            video.src = URL.createObjectURL(selectedFile);
         }
     };
 
@@ -137,7 +151,7 @@ const UploadVideo = ({ user, onUploadSuccess }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--text-secondary)' }}>
                         <UploadCloud size={48} />
                         <p style={{ margin: 0 }}>Click to select a speech recording</p>
-                        <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: 0 }}>Max size: 100MB</p>
+                        <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: 0 }}>Max duration: 10 Minutes | Allowable file types: mp4, mov</p>
                     </div>
                 )}
             </div>

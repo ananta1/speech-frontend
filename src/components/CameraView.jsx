@@ -15,6 +15,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
     const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
     const [recordingMimeType, setRecordingMimeType] = useState('video/webm'); // Default
     const mediaRecorderRef = useRef(null);
+    const recordingTimeoutRef = useRef(null);
     const [error, setError] = useState(null);
     const [showFlash, setShowFlash] = useState(false);
 
@@ -22,6 +23,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploadName, setUploadName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
 
     const stopCamera = () => {
         if (streamRef.current) {
@@ -64,6 +66,25 @@ const CameraView = ({ user, onUploadSuccess }) => {
             stopCamera();
         };
     }, []);
+
+    // Timer effect
+    useEffect(() => {
+        let interval;
+        if (isRecording) {
+            interval = setInterval(() => {
+                setRecordingTime((prev) => prev + 1);
+            }, 1000);
+        } else {
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [isRecording]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleTakePhoto = useCallback(() => {
         if (videoRef.current && canvasRef.current) {
@@ -109,7 +130,18 @@ const CameraView = ({ user, onUploadSuccess }) => {
             };
 
             mediaRecorder.start();
+            setRecordingTime(0);
             setIsRecording(true);
+
+            // Auto stop after 10 mins (600000 ms)
+            if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+            recordingTimeoutRef.current = setTimeout(() => {
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                    mediaRecorderRef.current.stop();
+                    setIsRecording(false);
+                    alert("Recording stopped automatically (10 minute limit reached).");
+                }
+            }, 600000);
         }
     }, [stream]);
 
@@ -123,6 +155,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
     }, [isRecording, recordedChunks, recordingMimeType]);
 
     const handleStopRecording = useCallback(() => {
+        if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
@@ -214,6 +247,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
             alignItems: 'center', justifyContent: 'center', position: 'relative'
         }}>
 
+
             <div className="glass-panel" style={{
                 position: 'relative', width: '90%', maxWidth: '800px', height: '60%', minHeight: '400px',
                 borderRadius: '1.5rem', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -249,25 +283,55 @@ const CameraView = ({ user, onUploadSuccess }) => {
                     />
                 )}
 
-                {isRecording && (
-                    <motion.div
-                        animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                        style={{
-                            position: 'absolute', top: '20px', right: '20px',
-                            background: 'var(--danger)', color: 'white',
-                            padding: '0.5rem 1rem', borderRadius: '9999px',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold'
-                        }}
-                    >
-                        <Circle size={12} fill="currentColor" /> REC
-                    </motion.div>
-                )}
+                <AnimatePresence>
+                    {isRecording && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            style={{
+                                position: 'absolute',
+                                top: '24px',
+                                right: '24px',
+                                zIndex: 10000,
+                                background: '#ef4444',
+                                color: 'white',
+                                padding: '10px 20px',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                boxShadow: '0 10px 30px rgba(239, 68, 68, 0.5)',
+                                pointerEvents: 'none',
+                                border: '2px solid rgba(255, 255, 255, 0.3)',
+                                fontWeight: '700'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <motion.div
+                                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+                                    transition={{ repeat: Infinity, duration: 1 }}
+                                    style={{ width: 12, height: 12, borderRadius: '50%', background: 'white' }}
+                                />
+                                <span style={{ fontSize: '0.85rem', letterSpacing: '0.15em' }}>REC</span>
+                            </div>
+                            <div style={{ width: '2px', height: '20px', background: 'rgba(255,255,255,0.3)' }} />
+                            <span style={{ fontSize: '1.4rem', fontFamily: 'monospace', minWidth: '75px', textAlign: 'center' }}>
+                                {formatTime(recordingTime)}
+                            </span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
 
+            <div style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                Please limit speech duration to 10 minutes.
+            </div>
+
             <div className="glass-panel" style={{
-                marginTop: '1.5rem', padding: '1rem 2rem', borderRadius: '9999px',
+                marginTop: '1rem', padding: '1rem 2rem', borderRadius: '9999px',
                 display: 'flex', gap: '2rem', alignItems: 'center'
             }}>
                 {(capturedImage || recordedVideoUrl) ? (
@@ -291,7 +355,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
                         </button>
                     </>
                 ) : (
-                    <div style={{ position: 'relative', height: '80px', width: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', height: '60px', width: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <motion.button
                             whileTap={{ scale: 0.9 }}
                             onClick={isRecording ? handleStopRecording : handleStartRecording}

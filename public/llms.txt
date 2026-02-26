@@ -1,0 +1,12 @@
+# Practice Your Speech
+An interactive web application for public speaking rehearsal and communication skill-building.
+
+## Core Capabilities
+- Speech rehearsal and recording.
+- Real-time feedback on delivery and pacing.
+- Tools for overcoming public speaking anxiety.
+
+## Target Audience
+- Professionals preparing for presentations.
+- Students practicing for debates or class talks.
+- Individuals preparing for social speeches (weddings, ceremonies).

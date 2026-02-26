@@ -164,6 +164,13 @@ const AnalyzeVideo = ({ user }) => {
         }
     };
 
+    const getScoreColor = (score) => {
+        if (!score && score !== 0) return 'var(--accent-primary)';
+        if (score >= 8) return '#22c55e'; // Green
+        if (score <= 5) return '#ef4444'; // Red
+        return '#eab308'; // Yellow (6-7)
+    };
+
     // Helper to support both new and legacy report formats
     const analysisData = selectedReport?.speechAnalysis || selectedReport?.toastmasterAnalysis;
 
@@ -326,11 +333,21 @@ const AnalyzeVideo = ({ user }) => {
                                     onClick={() => handleDelete(video.key)}
                                     className="delete-btn"
                                     style={{
-                                        padding: '0.6rem', borderRadius: '0.5rem',
-                                        background: 'transparent', color: '#ef4444',
-                                        border: '1px solid currentColor', cursor: 'pointer',
+                                        padding: '0.6rem', borderRadius: '0.6rem',
+                                        background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        transition: 'all 0.2s', opacity: 0.7
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#ef4444';
+                                        e.currentTarget.style.color = 'white';
+                                        e.currentTarget.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.4)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                        e.currentTarget.style.color = '#ef4444';
+                                        e.currentTarget.style.boxShadow = 'none';
                                     }}
                                     title="Delete Video"
                                 >
@@ -358,7 +375,7 @@ const AnalyzeVideo = ({ user }) => {
                             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                             style={{
                                 background: 'var(--bg-primary)', padding: '2rem', borderRadius: '1.5rem',
-                                maxWidth: '700px', width: '100%', maxHeight: '80vh', overflowY: 'auto',
+                                maxWidth: '1092px', width: '100%', maxHeight: '80vh', overflowY: 'auto',
                                 position: 'relative', border: '1px solid var(--glass-border)'
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -382,59 +399,117 @@ const AnalyzeVideo = ({ user }) => {
                                         <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                             <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: 'var(--accent-primary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>Speech evaluation insights</h3>
 
-                                            {/* Summary */}
-                                            <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
-                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Executive Summary</div>
-                                                <div style={{ fontSize: '0.85rem', lineHeight: '1.4', opacity: 0.9 }}>{analysisData.summary || "Summary not available."}</div>
-                                            </div>
-
-                                            {/* Intro & Conclusion */}
+                                            {/* Summary & Central Message */}
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                                 <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Introduction</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{analysisData.introduction?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '0.85rem', lineHeight: '1.4', opacity: 0.9 }}>{analysisData.introduction?.comment || "Analysis not available."}</div>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Executive Summary</div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9 }}>{analysisData.summary || "Summary not available."}</div>
                                                 </div>
                                                 <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Central Message / Thesis</div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9 }}>{analysisData.central_message || "N/A"}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Glows & Grows */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem', borderLeft: '4px solid var(--success)' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <CheckCircle size={16} /> Strengths (Glows)
+                                                    </div>
+                                                    <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '1rem', lineHeight: '1.6', opacity: 0.9 }}>
+                                                        {analysisData.glows?.length > 0 ? analysisData.glows.map((glow, i) => <li key={i}>{glow}</li>) : <li>Your energy and pacing are effective.</li>}
+                                                    </ul>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem', borderLeft: '4px solid #f59e0b' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <BarChart2 size={16} /> Areas to Grow
+                                                    </div>
+                                                    <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '1rem', lineHeight: '1.6', opacity: 0.9 }}>
+                                                        {analysisData.grows?.length > 0 ? analysisData.grows.map((grow, i) => <li key={i}>{grow}</li>) : <li>Consider adding more storytelling elements.</li>}
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            {/* Core Mechanics: Intro, Organization, Conclusion */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Introduction</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.introduction?.score) }}>{analysisData.introduction?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.introduction?.comment || "Analysis not available."}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Organization</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.organization?.score) }}>{analysisData.organization?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.organization?.comment || "Focus on smooth transitions."}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
                                                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Conclusion</div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{analysisData.conclusion?.score || '-'}/10</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.conclusion?.score) }}>{analysisData.conclusion?.score || '-'}/10</div>
                                                     </div>
-                                                    <div style={{ fontSize: '0.85rem', lineHeight: '1.4', opacity: 0.9 }}>{analysisData.conclusion?.comment || "Analysis not available."}</div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.conclusion?.comment || "Analysis not available."}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Advanced Engagement: Storytelling, Audience, Rhetoric */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Storytelling</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.storytelling?.score) }}>{analysisData.storytelling?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.storytelling?.comment || "Use stories for impact."}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Audience Connection</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.audience_connection?.score) }}>{analysisData.audience_connection?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.audience_connection?.comment || "Inclusive rapport strategies."}</div>
+                                                </div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Rhetorical Devices</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.rhetorical_devices?.score) }}>{analysisData.rhetorical_devices?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.rhetorical_devices?.comment || "Metaphors, humor, repetition."}</div>
                                                 </div>
                                             </div>
 
                                             {/* Body Structure */}
-                                            <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Body & Structure</div>
-                                                    <div style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>Score: {analysisData.body_structure?.score || '-'}/10</div>
+                                            <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Body & Structure Analysis</div>
+                                                    <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.body_structure?.score) }}>Score: {analysisData.body_structure?.score || '-'}/10</div>
                                                 </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                                     <div>
-                                                        <span style={{ fontWeight: '600', display: 'block', marginBottom: '0.2rem', color: 'var(--text-primary)' }}>Sentence Variety:</span>
-                                                        <span style={{ opacity: 0.8 }}>{analysisData.body_structure?.sentence_variety || "N/A"}</span>
+                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Sentence Variety:</div>
+                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.sentence_variety || "N/A"}</div>
                                                     </div>
                                                     <div>
-                                                        <span style={{ fontWeight: '600', display: 'block', marginBottom: '0.2rem', color: 'var(--text-primary)' }}>Word Choice:</span>
-                                                        <span style={{ opacity: 0.8 }}>{analysisData.body_structure?.word_choice || "N/A"}</span>
+                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Word Choice:</div>
+                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.word_choice || "N/A"}</div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* Filler Words & Grammar (Existing but styled) */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Filler Words</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.5rem 0' }}>{analysisData.filler_words.total} <span style={{ fontSize: '0.9rem', fontWeight: 'normal', color: 'var(--text-primary)' }}>detected</span></div>
-                                                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{analysisData.filler_words.comment}</div>
+                                            {/* Filler Words & Grammar */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Filler Words Analysis</div>
+                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.filler_words.total} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>fillers detected</span></div>
+                                                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.filler_words.comment}</div>
                                                 </div>
-                                                <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Grammar</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.5rem 0' }}>{analysisData.grammar_metrics.long_sentences_count} <span style={{ fontSize: '0.9rem', fontWeight: 'normal', color: 'var(--text-primary)' }}>long sentences</span></div>
-                                                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{analysisData.grammar_metrics.suggestion}</div>
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Grammar & Complexity</div>
+                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.grammar_metrics.long_sentences_count} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>long sentences</span></div>
+                                                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.grammar_metrics.suggestion}</div>
                                                 </div>
                                             </div>
 
@@ -443,10 +518,63 @@ const AnalyzeVideo = ({ user }) => {
                                                 <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>
                                                     Body Language <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({analysisData.body_language?.primary_emotion || "Unknown"})</span>
                                                 </div>
-                                                <div style={{ fontSize: '0.85rem', lineHeight: '1.4', opacity: 0.9 }}>
+                                                <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9, marginBottom: '0.8rem' }}>
                                                     {analysisData.body_language?.summary || "Body language analysis not available."}
                                                 </div>
+
+                                                {/* Emotions Breakdown */}
+                                                {selectedReport.emotionsDetected && (
+                                                    <div style={{ marginTop: '0.5rem' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: '600' }}>Detected Expressions:</div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                            {Object.entries(selectedReport.emotionsDetected)
+                                                                .sort(([, a], [, b]) => b - a)
+                                                                .slice(0, 5)
+                                                                .map(([emotion, count]) => (
+                                                                    <div key={emotion} style={{
+                                                                        fontSize: '0.75rem',
+                                                                        padding: '0.3rem 0.6rem',
+                                                                        background: 'rgba(255,255,255,0.05)',
+                                                                        borderRadius: '1rem',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                                                    }}>
+                                                                        <span style={{ textTransform: 'capitalize' }}>{emotion.toLowerCase()}</span>
+                                                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{count}</span>
+                                                                    </div>
+                                                                ))
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            {/* Delivery Metrics */}
+                                            {analysisData.delivery_metrics && (
+                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
+                                                    <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginTop: 0, marginBottom: '1.2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                                                        Delivery & Pacing
+                                                    </h4>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '0.4rem' }}>
+                                                                Pace (WPM): <span style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{analysisData.delivery_metrics.wpm || 0}</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '1rem', opacity: 0.8, lineHeight: '1.6' }}>
+                                                                {analysisData.delivery_metrics.wpm_evaluation}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '0.4rem' }}>
+                                                                Pauses:
+                                                            </div>
+                                                            <div style={{ fontSize: '1rem', opacity: 0.8, lineHeight: '1.6' }}>
+                                                                {analysisData.delivery_metrics.pause_evaluation}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -466,16 +594,54 @@ const AnalyzeVideo = ({ user }) => {
 
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--accent-primary)' }}>AI Recommendations</h3>
-                                        <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.5rem', lineHeight: '1.6' }}>
+                                        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.5rem', lineHeight: '1.6', fontSize: '1rem' }}>
                                             {selectedReport.recommendation}
                                         </div>
                                     </div>
+
+                                    {/* Improvisation Suggestions */}
+                                    {analysisData?.improvisation && (
+                                        <div style={{ marginBottom: '1.5rem' }}>
+                                            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--accent-primary)' }}>Improvisation & Rewrite</h3>
+
+                                            {/* General Tips */}
+                                            {analysisData.improvisation.general_tips?.length > 0 && (
+                                                <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                                                    <h4 style={{ fontSize: '0.9rem', marginTop: 0, color: 'var(--text-secondary)' }}>General Tips</h4>
+                                                    <ul style={{ paddingLeft: '1.2rem', margin: '0.5rem 0', fontSize: '1rem', lineHeight: '1.6' }}>
+                                                        {analysisData.improvisation.general_tips.map((tip, idx) => (
+                                                            <li key={idx} style={{ marginBottom: '0.3rem' }}>{tip}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {/* Rewritten Passages */}
+                                            {analysisData.improvisation.rewritten_passages?.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                                    {analysisData.improvisation.rewritten_passages.map((item, idx) => (
+                                                        <div key={idx} className="glass-panel" style={{ padding: '1rem', borderRadius: '0.5rem', borderLeft: '3px solid var(--accent-primary)' }}>
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: 'bold' }}>Original:</div>
+                                                            <div style={{ fontSize: '1rem', fontStyle: 'italic', marginBottom: '0.8rem', opacity: 0.8 }}>"{item.original}"</div>
+
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--success)', marginBottom: '0.3rem', fontWeight: 'bold' }}>Try saying:</div>
+                                                            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.8rem' }}>"{item.better_version}"</div>
+
+                                                            <div style={{ fontSize: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '0.3rem', lineHeight: '1.5' }}>
+                                                                <span style={{ fontWeight: 'bold' }}>Why: </span> {item.reason}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     <div>
                                         <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Transcript</h3>
                                         <p style={{
                                             padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem',
-                                            maxHeight: '150px', overflowY: 'auto', fontSize: '0.9rem', lineHeight: '1.5',
+                                            maxHeight: '200px', overflowY: 'auto', fontSize: '1rem', lineHeight: '1.6',
                                             whiteSpace: 'pre-wrap'
                                         }}>
                                             {selectedReport.transcript}
