@@ -1,7 +1,7 @@
 
 # Note: Ensure the following environment variables are set or values match your .env
-S3_BUCKET="practiceyourspeech"
-DIST_ID="E16LNC06XBNOCK"
+S3_BUCKET="YOUR_S3_BUCKET_NAME"
+DIST_ID="YOUR_CLOUDFRONT_DIST_ID"
 
 npm install
 npm run build

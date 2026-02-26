@@ -4,11 +4,15 @@ import json
 import botocore
 import mimetypes
 import time
+from dotenv import load_dotenv
+
+# Load config from .env
+load_dotenv()
 
 s3 = boto3.client('s3')
 cf = boto3.client('cloudfront')
 
-BUCKET_NAME = 'practiceyourspeech'
+BUCKET_NAME = os.environ.get('VITE_S3_BUCKET', 'REPLACE_WITH_YOUR_S3_BUCKET')
 REGION = 'us-east-1' 
 
 def create_bucket():
@@ -41,10 +45,8 @@ def upload_files():
     for root, dirs, files in os.walk(dist_path):
         for file in files:
             local_path = os.path.join(root, file)
-            # Create S3 key (relative path, forward slashes)
             s3_path = os.path.relpath(local_path, dist_path).replace("\\", "/")
             
-            # Guess MIME type
             content_type, _ = mimetypes.guess_type(local_path)
             if not content_type:
                 content_type = 'application/octet-stream'
@@ -64,13 +66,12 @@ def upload_files():
     return True
 
 def create_cloudfront_distribution():
-    # 1. Create Origin Access Control (OAC)
     oac_name = f'{BUCKET_NAME}-oac-{int(time.time())}'
     try:
         oac = cf.create_origin_access_control(
             OriginAccessControlConfig={
                 'Name': oac_name,
-                'Description': 'OAC for practiceyourspeech',
+                'Description': f'OAC for {BUCKET_NAME}',
                 'SigningProtocol': 'sigv4',
                 'SigningBehavior': 'always',
                 'OriginAccessControlOriginType': 's3'
@@ -82,7 +83,6 @@ def create_cloudfront_distribution():
         print(f"Error creating OAC: {e}")
         return None
 
-    # 2. Create Distribution
     origin_id = f"S3-{BUCKET_NAME}"
     try:
         distribution = cf.create_distribution(
@@ -97,7 +97,7 @@ def create_cloudfront_distribution():
                             'Id': origin_id,
                             'DomainName': f'{BUCKET_NAME}.s3.{REGION}.amazonaws.com',
                             'S3OriginConfig': {
-                                'OriginAccessIdentity': '' # Empty for OAC
+                                'OriginAccessIdentity': ''
                             },
                             'OriginAccessControlId': oac_id
                         }
@@ -140,7 +140,7 @@ def create_cloudfront_distribution():
                         }
                     ]
                 },
-                'Comment': 'practiceyourspeech frontend',
+                'Comment': f'{BUCKET_NAME} frontend',
                 'Enabled': True
             }
         )
@@ -154,7 +154,6 @@ def create_cloudfront_distribution():
         return None
 
 def update_bucket_policy(dist_arn):
-    # Allow CloudFront to read bucket
     policy = {
         "Version": "2012-10-17",
         "Statement": [
