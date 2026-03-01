@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, CheckCircle, AlertCircle, Loader, Users } from 'lucide-react';
+import { User, CreditCard, CheckCircle, AlertCircle, Loader, Users, Lock } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Profile = ({ user, refreshAppProfile }) => {
@@ -8,6 +8,11 @@ const Profile = ({ user, refreshAppProfile }) => {
     const [error, setError] = useState(null);
     const [processing, setProcessing] = useState(false);
     const [joinCode, setJoinCode] = useState('');
+    const [showChangePw, setShowChangePw] = useState(false);
+    const [currentPw, setCurrentPw] = useState('');
+    const [newPw, setNewPw] = useState('');
+    const [confirmPw, setConfirmPw] = useState('');
+    const [pwMessage, setPwMessage] = useState({ text: '', type: '' });
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -36,7 +41,7 @@ const Profile = ({ user, refreshAppProfile }) => {
         };
 
         fetchProfile();
-    }, [user]);
+    }, [user?.id]);
 
     const handleSubscribe = async () => {
         setProcessing(true);
@@ -193,120 +198,233 @@ const Profile = ({ user, refreshAppProfile }) => {
                 </div>
             </div>
 
-            {/* Subscription Details */}
-            <div className="glass-panel" style={{ padding: '2rem', borderRadius: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <CreditCard size={20} /> Subscription
-                    </h3>
-                    <div style={{
-                        padding: '0.4rem 1rem', borderRadius: '2rem',
-                        background: isActive ? (subscription.renewal === false ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)') : 'rgba(239, 68, 68, 0.2)',
-                        color: isActive ? (subscription.renewal === false ? '#f59e0b' : '#22c55e') : '#ef4444',
-                        fontWeight: '600', fontSize: '0.9rem',
-                        border: `1px solid ${isActive ? (subscription.renewal === false ? '#f59e0b' : '#22c55e') : '#ef4444'}`
-                    }}>
-                        {isActive ? (subscription.renewal === false ? 'PRO (ENDING)' : 'PRO PLAN') : 'FREE PLAN'}
+            {/* Change Password — only for native (non-Google) users */}
+            {(profile?.user?.authProvider || user.authProvider) !== 'google' && (
+                <div className="glass-panel" style={{ padding: '2rem', borderRadius: '1rem', marginBottom: '2rem' }}>
+                    <div
+                        onClick={() => { setShowChangePw(!showChangePw); setPwMessage({ text: '', type: '' }); }}
+                        style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            cursor: 'pointer', userSelect: 'none'
+                        }}
+                    >
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Lock size={20} /> Change Password
+                        </h3>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>{showChangePw ? '▲' : '▼'}</span>
                     </div>
-                </div>
 
-                <div style={{ marginBottom: '2rem' }}>
-                    {isActive ? (
-                        <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                            <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <CheckCircle size={16} color="var(--success)" /> You have access to all Pro features.
-                            </p>
-                            <p>{subscription.renewal === false ? 'Subscription ending on: ' : 'Next billing date: '} {subscription.sub_end_date ? new Date(subscription.sub_end_date).toLocaleDateString() : (subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString() : 'N/A')}</p>
-                            {subscription.renewal === false && <p style={{ color: '#ef4444', fontSize: '0.9rem' }}>Renewal is turned off. You will lose access after this date.</p>}
-                        </div>
-                    ) : (
-                        <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                            <p>Upgrade to Pro to unlock:</p>
-                            <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
-                                <li>Unlimited Speech Analysis</li>
-                                <li>Advanced AI Feedback</li>
-                                <li>Improvisation Suggestions</li>
-                                <li>Detailed Delivery Metrics</li>
-                            </ul>
+                    {showChangePw && (
+                        <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <input
+                                type="password" placeholder="Current Password" value={currentPw}
+                                onChange={e => setCurrentPw(e.target.value)}
+                                style={{
+                                    padding: '0.9rem 1rem', borderRadius: '0.75rem',
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-primary)', outline: 'none', fontSize: '1rem'
+                                }}
+                            />
+                            <input
+                                type="password" placeholder="New Password (min 6 characters)" value={newPw}
+                                onChange={e => setNewPw(e.target.value)}
+                                style={{
+                                    padding: '0.9rem 1rem', borderRadius: '0.75rem',
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-primary)', outline: 'none', fontSize: '1rem'
+                                }}
+                            />
+                            <input
+                                type="password" placeholder="Confirm New Password" value={confirmPw}
+                                onChange={e => setConfirmPw(e.target.value)}
+                                style={{
+                                    padding: '0.9rem 1rem', borderRadius: '0.75rem',
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-primary)', outline: 'none', fontSize: '1rem'
+                                }}
+                            />
+
+                            {pwMessage.text && (
+                                <div style={{
+                                    padding: '0.7rem 1rem', borderRadius: '0.6rem', fontSize: '0.95rem',
+                                    background: pwMessage.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                                    color: pwMessage.type === 'success' ? '#10b981' : '#ef4444',
+                                    border: `1px solid ${pwMessage.type === 'success' ? '#10b98133' : '#ef444433'}`,
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                }}>
+                                    {pwMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                                    {pwMessage.text}
+                                </div>
+                            )}
+
+                            <button
+                                disabled={processing}
+                                onClick={async () => {
+                                    setPwMessage({ text: '', type: '' });
+                                    if (!currentPw || !newPw || !confirmPw) {
+                                        setPwMessage({ text: 'Please fill in all fields.', type: 'error' }); return;
+                                    }
+                                    if (newPw.length < 6) {
+                                        setPwMessage({ text: 'New password must be at least 6 characters.', type: 'error' }); return;
+                                    }
+                                    if (newPw !== confirmPw) {
+                                        setPwMessage({ text: 'New passwords do not match.', type: 'error' }); return;
+                                    }
+                                    setProcessing(true);
+                                    try {
+                                        const res = await fetch(`${API_BASE_URL}/change-password`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ userId: user.id || user.userId, currentPassword: currentPw, newPassword: newPw })
+                                        });
+                                        const data = await res.json();
+                                        if (res.ok) {
+                                            setPwMessage({ text: 'Password changed successfully!', type: 'success' });
+                                            setCurrentPw(''); setNewPw(''); setConfirmPw('');
+                                            setTimeout(() => setShowChangePw(false), 2000);
+                                        } else {
+                                            setPwMessage({ text: data.message || 'Failed to change password.', type: 'error' });
+                                        }
+                                    } catch {
+                                        setPwMessage({ text: 'Connection error.', type: 'error' });
+                                    } finally {
+                                        setProcessing(false);
+                                    }
+                                }}
+                                style={{
+                                    padding: '0.9rem', background: 'var(--accent-gradient)',
+                                    color: 'white', border: 'none', borderRadius: '0.75rem',
+                                    fontWeight: '700', fontSize: '1rem', cursor: processing ? 'wait' : 'pointer',
+                                    opacity: processing ? 0.6 : 1, transition: 'all 0.3s'
+                                }}
+                            >
+                                {processing ? 'Changing...' : 'Update Password'}
+                            </button>
                         </div>
                     )}
                 </div>
+            )}
 
-                {!isActive && (
-                    <button
-                        onClick={handleSubscribe}
-                        disabled={true}
-                        style={{
-                            width: 'auto', margin: '0 auto', display: 'block',
-                            padding: '0.8rem 3rem',
-                            background: 'var(--accent-gradient)',
-                            color: 'white', border: 'none', borderRadius: '0.5rem',
-                            fontWeight: '600', fontSize: '1.1rem', cursor: 'not-allowed',
-                            opacity: 0.6,
-                            boxShadow: 'none'
-                        }}
-                    >
-                        {processing ? 'Redirecting to Stripe...' : 'Subscribe - $7/month'}
-                    </button>
-                )}
-
-                {isActive && subscription.renewal !== false && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
+            {/* Subscription Details — hidden for class-enrolled students */}
+            {!(user.role === 'student' && (profile?.user?.classId || user.classId)) && (
+                <div className="glass-panel" style={{ padding: '2rem', borderRadius: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <CreditCard size={20} /> Subscription
+                        </h3>
                         <div style={{
-                            width: '100%', padding: '1rem',
-                            background: 'var(--bg-secondary)',
-                            color: 'var(--text-secondary)', border: 'none', borderRadius: '0.5rem',
-                            fontWeight: '600', textAlign: 'center'
+                            padding: '0.4rem 1rem', borderRadius: '2rem',
+                            background: isActive ? (subscription.renewal === false ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)') : 'rgba(239, 68, 68, 0.2)',
+                            color: isActive ? (subscription.renewal === false ? '#f59e0b' : '#22c55e') : '#ef4444',
+                            fontWeight: '600', fontSize: '0.9rem',
+                            border: `1px solid ${isActive ? (subscription.renewal === false ? '#f59e0b' : '#22c55e') : '#ef4444'}`
                         }}>
-                            Subscription Active
+                            {isActive ? (subscription.renewal === false ? 'PRO (ENDING)' : 'PRO PLAN') : 'FREE PLAN'}
                         </div>
-                        <button
-                            onClick={handleCancelSubscription}
-                            disabled={processing}
-                            style={{
-                                background: 'none',
-                                border: '1px solid #ef4444',
-                                color: '#ef4444',
-                                padding: '0.6rem 2rem',
-                                borderRadius: '2rem',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.3s ease'
-                            }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.background = '#ef4444';
-                                e.currentTarget.style.color = 'white';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.background = 'none';
-                                e.currentTarget.style.color = '#ef4444';
-                            }}
-                        >
-                            {processing ? 'Processing...' : 'Cancel Subscription'}
-                        </button>
                     </div>
-                )}
 
-                {isActive && subscription.renewal === false && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
+                    <div style={{ marginBottom: '2rem' }}>
+                        {isActive ? (
+                            <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <CheckCircle size={16} color="var(--success)" /> You have access to all Pro features.
+                                </p>
+                                <p>{subscription.renewal === false ? 'Subscription ending on: ' : 'Next billing date: '} {subscription.sub_end_date ? new Date(subscription.sub_end_date).toLocaleDateString() : (subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString() : 'N/A')}</p>
+                                {subscription.renewal === false && <p style={{ color: '#ef4444', fontSize: '0.9rem' }}>Renewal is turned off. You will lose access after this date.</p>}
+                            </div>
+                        ) : (
+                            <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                <p>Upgrade to Pro to unlock:</p>
+                                <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+                                    <li>Unlimited Speech Analysis</li>
+                                    <li>Advanced AI Feedback</li>
+                                    <li>Improvisation Suggestions</li>
+                                    <li>Detailed Delivery Metrics</li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+
+                    {!isActive && (
                         <button
-                            onClick={handleReactivateSubscription}
+                            onClick={handleSubscribe}
                             disabled={true}
                             style={{
-                                width: 'auto', padding: '1rem 3rem',
+                                width: 'auto', margin: '0 auto', display: 'block',
+                                padding: '0.8rem 3rem',
                                 background: 'var(--accent-gradient)',
                                 color: 'white', border: 'none', borderRadius: '0.5rem',
                                 fontWeight: '600', fontSize: '1.1rem', cursor: 'not-allowed',
-                                boxShadow: 'none',
-                                opacity: 0.6
+                                opacity: 0.6,
+                                boxShadow: 'none'
                             }}
                         >
-                            {processing ? 'Processing...' : 'Renew Subscription'}
+                            {processing ? 'Redirecting to Stripe...' : 'Subscribe - $7/month'}
                         </button>
-                    </div>
-                )}
-            </div>
+                    )}
+
+                    {isActive && subscription.renewal !== false && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
+                            <div style={{
+                                width: '100%', padding: '1rem',
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-secondary)', border: 'none', borderRadius: '0.5rem',
+                                fontWeight: '600', textAlign: 'center'
+                            }}>
+                                Subscription Active
+                            </div>
+                            <button
+                                onClick={handleCancelSubscription}
+                                disabled={processing}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid #ef4444',
+                                    color: '#ef4444',
+                                    padding: '0.6rem 2rem',
+                                    borderRadius: '2rem',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    fontSize: '0.9rem',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = '#ef4444';
+                                    e.currentTarget.style.color = 'white';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = 'none';
+                                    e.currentTarget.style.color = '#ef4444';
+                                }}
+                            >
+                                {processing ? 'Processing...' : 'Cancel Subscription'}
+                            </button>
+                        </div>
+                    )}
+
+                    {isActive && subscription.renewal === false && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
+                            <button
+                                onClick={handleReactivateSubscription}
+                                disabled={processing}
+                                style={{
+                                    width: 'auto', padding: '1rem 3rem',
+                                    background: 'var(--accent-gradient)',
+                                    color: 'white', border: 'none', borderRadius: '0.5rem',
+                                    fontWeight: '600', fontSize: '1.1rem',
+                                    cursor: processing ? 'wait' : 'pointer',
+                                    boxShadow: 'var(--shadow-glow)',
+                                    opacity: processing ? 0.6 : 1,
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => !processing && (e.currentTarget.style.transform = 'scale(1.05)')}
+                                onMouseOut={(e) => !processing && (e.currentTarget.style.transform = 'scale(1)')}
+                            >
+                                {processing ? 'Processing...' : 'Renew Subscription'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Class Details for Students */}
             {user.role === 'student' && (

@@ -11,6 +11,36 @@ const AnalyzeVideo = ({ user }) => {
     const [selectedReport, setSelectedReport] = useState(null);
     const [isReportLoading, setIsReportLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [classCriteria, setClassCriteria] = useState(null);
+
+    // Fetch class criteria if student belongs to a class
+    useEffect(() => {
+        if (user) {
+            const fetchClassCriteria = async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/get-profile`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id || user.userId })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.classCriteria) {
+                        console.log('Class criteria loaded:', data.classCriteria);
+                        setClassCriteria(data.classCriteria);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch class criteria:', err);
+                }
+            };
+            fetchClassCriteria();
+        }
+    }, [user]);
+
+    // Check if an analysis section should be shown based on class criteria
+    const shouldShow = (sectionKey) => {
+        if (!classCriteria || classCriteria.length === 0) return true; // No class filter — show everything
+        return classCriteria.includes(sectionKey);
+    };
 
     useEffect(() => {
         if (user) {
@@ -431,126 +461,184 @@ const AnalyzeVideo = ({ user }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Core Mechanics: Intro, Organization, Conclusion */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Introduction</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.introduction?.score) }}>{analysisData.introduction?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.introduction?.comment || "Analysis not available."}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Organization</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.organization?.score) }}>{analysisData.organization?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.organization?.comment || "Focus on smooth transitions."}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Conclusion</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.conclusion?.score) }}>{analysisData.conclusion?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.conclusion?.comment || "Analysis not available."}</div>
-                                                </div>
-                                            </div>
+                                            {/* ═══ Dynamic Criteria Sections ═══ */}
+                                            {/* Automatically renders any criterion not in the special-rendering set */}
+                                            {(() => {
+                                                // These keys have special/hardcoded rendering
+                                                const specialKeys = new Set([
+                                                    'summary', 'central_message', 'glows', 'grows',
+                                                    'body_structure', 'filler_words', 'grammar_metrics',
+                                                    'body_language', 'delivery_metrics',
+                                                    'recommendation', 'improvisation', 'overall_score',
+                                                    'performance_summary', 'overall_recommendation'
+                                                ]);
 
-                                            {/* Advanced Engagement: Storytelling, Audience, Rhetoric */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Storytelling</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.storytelling?.score) }}>{analysisData.storytelling?.score || '-'}/10</div>
+                                                // Gather all non-special sections that have meaningful data
+                                                const dynamicSections = Object.entries(analysisData)
+                                                    .filter(([key, val]) => {
+                                                        if (specialKeys.has(key)) return false;
+                                                        if (val === null || val === undefined) return false;
+                                                        return true; // Accept strings, arrays, and objects
+                                                    })
+                                                    .filter(([key]) => shouldShow(key));
+
+                                                if (dynamicSections.length === 0) return null;
+
+                                                return (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                                                        {dynamicSections.map(([key, val]) => {
+                                                            const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+                                                            // Case 1: Plain string value
+                                                            if (typeof val === 'string') {
+                                                                return (
+                                                                    <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
+                                                                        <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{val}</div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Case 2: Array value (list of items)
+                                                            if (Array.isArray(val)) {
+                                                                return (
+                                                                    <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
+                                                                        <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '1rem', lineHeight: '1.6', opacity: 0.9 }}>
+                                                                            {val.map((item, i) => <li key={i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>)}
+                                                                        </ul>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Case 3: Object with score/comment
+                                                            if (typeof val === 'object') {
+                                                                return (
+                                                                    <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
+                                                                        {val.score !== undefined && (
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(val.score) }}>{val.score}/10</div>
+                                                                            </div>
+                                                                        )}
+                                                                        {val.comment && (
+                                                                            <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>
+                                                                                {val.comment}
+                                                                            </div>
+                                                                        )}
+                                                                        {/* Render any additional sub-fields beyond score and comment */}
+                                                                        {Object.entries(val)
+                                                                            .filter(([subKey]) => subKey !== 'score' && subKey !== 'comment')
+                                                                            .map(([subKey, subVal]) => {
+                                                                                const subLabel = subKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                                                                return (
+                                                                                    <div key={subKey} style={{ marginTop: '0.8rem' }}>
+                                                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.3rem', fontSize: '0.9rem' }}>{subLabel}:</div>
+                                                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.5', fontSize: '0.95rem' }}>
+                                                                                            {typeof subVal === 'string' ? subVal
+                                                                                                : Array.isArray(subVal) ? subVal.join(', ')
+                                                                                                    : JSON.stringify(subVal)}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })
+                                                                        }
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Case 4: Number or boolean (unlikely but safe)
+                                                            return (
+                                                                <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
+                                                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{String(val)}</div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.storytelling?.comment || "Use stories for impact."}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Audience Connection</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.audience_connection?.score) }}>{analysisData.audience_connection?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.audience_connection?.comment || "Inclusive rapport strategies."}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Rhetorical Devices</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(analysisData.rhetorical_devices?.score) }}>{analysisData.rhetorical_devices?.score || '-'}/10</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{analysisData.rhetorical_devices?.comment || "Metaphors, humor, repetition."}</div>
-                                                </div>
-                                            </div>
+                                                );
+                                            })()}
 
                                             {/* Body Structure */}
-                                            <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Body & Structure Analysis</div>
-                                                    <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.body_structure?.score) }}>Score: {analysisData.body_structure?.score || '-'}/10</div>
-                                                </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Sentence Variety:</div>
-                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.sentence_variety || "N/A"}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Word Choice:</div>
-                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.word_choice || "N/A"}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Filler Words & Grammar */}
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                            {shouldShow('body_structure') && (
                                                 <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Filler Words Analysis</div>
-                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.filler_words.total} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>fillers detected</span></div>
-                                                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.filler_words.comment}</div>
-                                                </div>
-                                                <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Grammar & Complexity</div>
-                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.grammar_metrics.long_sentences_count} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>long sentences</span></div>
-                                                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.grammar_metrics.suggestion}</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Body Language */}
-                                            <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
-                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                                    Body Language <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({analysisData.body_language?.primary_emotion || "Unknown"})</span>
-                                                </div>
-                                                <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9, marginBottom: '0.8rem' }}>
-                                                    {analysisData.body_language?.summary || "Body language analysis not available."}
-                                                </div>
-
-                                                {/* Emotions Breakdown */}
-                                                {selectedReport.emotionsDetected && (
-                                                    <div style={{ marginTop: '0.5rem' }}>
-                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: '600' }}>Detected Expressions:</div>
-                                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                            {Object.entries(selectedReport.emotionsDetected)
-                                                                .sort(([, a], [, b]) => b - a)
-                                                                .slice(0, 5)
-                                                                .map(([emotion, count]) => (
-                                                                    <div key={emotion} style={{
-                                                                        fontSize: '0.75rem',
-                                                                        padding: '0.3rem 0.6rem',
-                                                                        background: 'rgba(255,255,255,0.05)',
-                                                                        borderRadius: '1rem',
-                                                                        border: '1px solid var(--glass-border)',
-                                                                        display: 'flex', alignItems: 'center', gap: '0.3rem'
-                                                                    }}>
-                                                                        <span style={{ textTransform: 'capitalize' }}>{emotion.toLowerCase()}</span>
-                                                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{count}</span>
-                                                                    </div>
-                                                                ))
-                                                            }
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Body & Structure Analysis</div>
+                                                        <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.body_structure?.score) }}>Score: {analysisData.body_structure?.score || '-'}/10</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Sentence Variety:</div>
+                                                            <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.sentence_variety || "N/A"}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Word Choice:</div>
+                                                            <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.word_choice || "N/A"}</div>
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
+
+                                            {/* Filler Words & Grammar */}
+                                            {(shouldShow('filler_words') || shouldShow('grammar_metrics')) && (
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                                    {shouldShow('filler_words') && analysisData.filler_words && (
+                                                        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Filler Words Analysis</div>
+                                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.filler_words.total || 0} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>fillers detected</span></div>
+                                                            <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.filler_words.comment}</div>
+                                                        </div>
+                                                    )}
+                                                    {shouldShow('grammar_metrics') && analysisData.grammar_metrics && (
+                                                        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
+                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Grammar & Complexity</div>
+                                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.grammar_metrics.long_sentences_count || 0} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>long sentences</span></div>
+                                                            <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.grammar_metrics.suggestion}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Body Language */}
+                                            {shouldShow('body_language') && (
+                                                <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                                                        Body Language <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({analysisData.body_language?.primary_emotion || "Unknown"})</span>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9, marginBottom: '0.8rem' }}>
+                                                        {analysisData.body_language?.summary || "Body language analysis not available."}
+                                                    </div>
+
+                                                    {/* Emotions Breakdown */}
+                                                    {selectedReport.emotionsDetected && (
+                                                        <div style={{ marginTop: '0.5rem' }}>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: '600' }}>Detected Expressions:</div>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                {Object.entries(selectedReport.emotionsDetected)
+                                                                    .sort(([, a], [, b]) => b - a)
+                                                                    .slice(0, 5)
+                                                                    .map(([emotion, count]) => (
+                                                                        <div key={emotion} style={{
+                                                                            fontSize: '0.75rem',
+                                                                            padding: '0.3rem 0.6rem',
+                                                                            background: 'rgba(255,255,255,0.05)',
+                                                                            borderRadius: '1rem',
+                                                                            border: '1px solid var(--glass-border)',
+                                                                            display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                                                        }}>
+                                                                            <span style={{ textTransform: 'capitalize' }}>{emotion.toLowerCase()}</span>
+                                                                            <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>{count}</span>
+                                                                        </div>
+                                                                    ))
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Delivery Metrics */}
-                                            {analysisData.delivery_metrics && (
+                                            {shouldShow('delivery_metrics') && analysisData.delivery_metrics && (
                                                 <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
                                                     <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginTop: 0, marginBottom: '1.2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
                                                         Delivery & Pacing
@@ -638,14 +726,122 @@ const AnalyzeVideo = ({ user }) => {
                                     )}
 
                                     <div>
-                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Transcript</h3>
-                                        <p style={{
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--text-secondary)' }}>Transcript</h3>
+                                            {selectedReport.pronunciationClarity !== undefined && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pronunciation Clarity:</span>
+                                                    <span style={{
+                                                        fontSize: '1.1rem', fontWeight: 'bold',
+                                                        color: selectedReport.pronunciationClarity >= 90 ? '#22c55e'
+                                                            : selectedReport.pronunciationClarity >= 75 ? '#eab308' : '#ef4444'
+                                                    }}>
+                                                        {selectedReport.pronunciationClarity}%
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Pronunciation Legend */}
+                                        {selectedReport.pronunciationData && (
+                                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <span style={{ width: 10, height: 10, borderRadius: 2, background: '#22c55e', display: 'inline-block' }} /> Clear (95%+)
+                                                </span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--text-primary)', opacity: 0.7, display: 'inline-block' }} /> Good (85-95%)
+                                                </span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b', display: 'inline-block' }} /> Unclear (70-85%)
+                                                </span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <span style={{ width: 10, height: 10, borderRadius: 2, background: '#ef4444', display: 'inline-block' }} /> Hard to recognize (&lt;70%)
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Pronunciation-Aware Transcript */}
+                                        <div style={{
                                             padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem',
-                                            maxHeight: '200px', overflowY: 'auto', fontSize: '1rem', lineHeight: '1.6',
-                                            whiteSpace: 'pre-wrap'
+                                            maxHeight: '250px', overflowY: 'auto', fontSize: '1rem', lineHeight: '1.8'
                                         }}>
-                                            {selectedReport.transcript}
-                                        </p>
+                                            {selectedReport.pronunciationData ? (
+                                                selectedReport.pronunciationData.map((item, idx) => {
+                                                    if (item.isPunctuation) {
+                                                        return <span key={idx}>{item.word} </span>;
+                                                    }
+                                                    const c = item.confidence;
+                                                    let color = 'inherit';
+                                                    let fontWeight = 'normal';
+                                                    let textDecoration = 'none';
+                                                    let title = `Confidence: ${Math.round(c * 100)}%`;
+
+                                                    if (c >= 0.95) {
+                                                        color = '#22c55e';
+                                                    } else if (c >= 0.85) {
+                                                        // Normal - no special styling
+                                                    } else if (c >= 0.70) {
+                                                        color = '#f59e0b';
+                                                        fontWeight = '600';
+                                                        textDecoration = 'underline wavy #f59e0b';
+                                                    } else {
+                                                        color = '#ef4444';
+                                                        fontWeight = '700';
+                                                        textDecoration = 'underline wavy #ef4444';
+                                                    }
+
+                                                    return (
+                                                        <span
+                                                            key={idx}
+                                                            title={title}
+                                                            style={{
+                                                                color,
+                                                                fontWeight,
+                                                                textDecoration,
+                                                                cursor: c < 0.85 ? 'help' : 'default',
+                                                                borderRadius: '2px',
+                                                                padding: c < 0.70 ? '0 2px' : '0',
+                                                                background: c < 0.70 ? 'rgba(239, 68, 68, 0.1)' : 'none'
+                                                            }}
+                                                        >
+                                                            {item.word}
+                                                        </span>
+                                                    );
+                                                }).reduce((acc, elem, idx, arr) => {
+                                                    acc.push(elem);
+                                                    // Add space after non-punctuation, unless next is punctuation
+                                                    const next = arr[idx + 1];
+                                                    if (next && !selectedReport.pronunciationData[idx + 1]?.isPunctuation) {
+                                                        acc.push(' ');
+                                                    }
+                                                    return acc;
+                                                }, [])
+                                            ) : (
+                                                <span style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.transcript}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Low Confidence Words Summary */}
+                                        {selectedReport.lowConfidenceWords?.length > 0 && (
+                                            <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.5rem', marginTop: '0.75rem', borderLeft: '3px solid #f59e0b' }}>
+                                                <div style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                                                    Words to Practice ({selectedReport.lowConfidenceWords.length} flagged)
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {selectedReport.lowConfidenceWords.map((w, i) => (
+                                                        <span key={i} style={{
+                                                            padding: '0.25rem 0.6rem', borderRadius: '0.4rem',
+                                                            background: w.confidence < 0.70 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                                            color: w.confidence < 0.70 ? '#ef4444' : '#f59e0b',
+                                                            fontSize: '0.85rem', fontWeight: '600',
+                                                            border: `1px solid ${w.confidence < 0.70 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                                                        }}>
+                                                            {w.word} <span style={{ opacity: 0.7, fontSize: '0.75rem' }}>({Math.round(w.confidence * 100)}%)</span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}

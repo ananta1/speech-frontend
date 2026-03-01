@@ -3,21 +3,42 @@
   <!-- Homepage -->
   <url>
     <loc>https://practiceyourspeech.com/</loc>
-    <lastmod>2026-02-17</lastmod>
+    <lastmod>2026-02-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <!-- Pricing Page -->
   <url>
     <loc>https://practiceyourspeech.com/price-plan</loc>
-    <lastmod>2026-02-17</lastmod>
+    <lastmod>2026-02-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <!-- FAQ Page -->
+  <url>
+    <loc>https://practiceyourspeech.com/faq</loc>
+    <lastmod>2026-02-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- Contact Page -->
+  <url>
+    <loc>https://practiceyourspeech.com/contact</loc>
+    <lastmod>2026-02-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <!-- Signup Page -->
   <url>
     <loc>https://practiceyourspeech.com/signup</loc>
-    <lastmod>2026-02-17</lastmod>
+    <lastmod>2026-02-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Login Page -->
+  <url>
+    <loc>https://practiceyourspeech.com/login</loc>
+    <lastmod>2026-02-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

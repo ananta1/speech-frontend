@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /practice
+Disallow: /analyze
+Disallow: /profile
+Disallow: /class-setup
+Disallow: /admin-tools
+Disallow: /setup-instructor
+Disallow: /payment-success
+
+Sitemap: https://practiceyourspeech.com/sitemap.xml

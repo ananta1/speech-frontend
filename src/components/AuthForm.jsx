@@ -266,19 +266,21 @@ const AuthForm = ({ onLoginSuccess }) => {
                                         onClick={() => setAuthMethod('signin')}
                                         style={{
                                             width: '80%', padding: '1rem', borderRadius: '1.2rem',
-                                            background: 'rgba(129, 140, 248, 0.1)', color: '#818cf8',
-                                            border: '1.5px solid rgba(129, 140, 248, 0.3)', fontSize: '1rem',
+                                            background: '#16a34a', color: 'white',
+                                            border: 'none', fontSize: '1rem',
                                             fontWeight: '700', cursor: 'pointer', transition: 'all 0.3s',
                                             alignSelf: 'center',
-                                            boxShadow: '0 4px 15px rgba(129, 140, 248, 0.1)'
+                                            boxShadow: '0 8px 25px rgba(22, 163, 74, 0.3)'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(129, 140, 248, 0.2)';
+                                            e.currentTarget.style.background = '#15803d';
                                             e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 12px 30px rgba(22, 163, 74, 0.4)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(129, 140, 248, 0.1)';
+                                            e.currentTarget.style.background = '#16a34a';
                                             e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(22, 163, 74, 0.3)';
                                         }}
                                     >
                                         Log In with Email

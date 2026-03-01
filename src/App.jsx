@@ -1,12 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown } from 'lucide-react';
 
-const GeometricBackground = () => {
+const GeometricBackground = ({ activeTab }) => {
+  const randomizeShape = (shape) => ({
+    ...shape,
+    top: `${Math.floor(Math.random() * 90)}%`,
+    left: `${Math.floor(Math.random() * 80)}%`,
+    rotate: Math.floor(Math.random() * 360),
+    size: shape.size * (0.6 + Math.random() * 0.8)
+  });
   return (
     <>
       {/* Decorative Background - LEFT SIDE */}
       <div style={{ position: 'absolute', top: 0, left: '-200px', width: '350px', height: '100%', pointerEvents: 'none', zIndex: 0, opacity: 0.6, overflow: 'visible' }}>
-        {[
+        {React.useMemo(() => [
           { type: 'circle', color: '#38bdf8', size: 120, top: '2%', left: '10%' },
           { type: 'rectangle', color: '#a855f7', size: 140, top: '7%', left: '45%', rotate: -15 },
           { type: 'star', color: '#fbbf24', size: 100, top: '12%', left: '5%', rotate: 20 },
@@ -24,11 +31,11 @@ const GeometricBackground = () => {
           { type: 'thick-line', color: '#a855f7', size: 200, top: '84%', left: '50%', rotate: -30 },
           { type: 'square', color: '#06b6d4', size: 100, top: '90%', left: '10%', rotate: 40 },
           { type: 'circle', color: '#38bdf8', size: 140, top: '96%', left: '40%' },
-        ].map((shape, i) => (
+        ].sort(() => 0.5 - Math.random()).slice(0, 10).map(randomizeShape), [activeTab]).map((shape, i) => (
           <motion.div
             key={`global-left-${i}`} initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0, y: [0, 40, 0], rotate: [shape.rotate || 0, (shape.rotate || 0) + 20, shape.rotate || 0] }}
-            transition={{ duration: 8 + i, repeat: Infinity, delay: i * 0.3, ease: "easeInOut" }}
+            animate={{ opacity: 1, x: 0, y: 0, rotate: shape.rotate || 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
             style={{ position: 'absolute', top: shape.top, left: shape.left, width: shape.size, height: shape.size }}
           >
             {shape.type === 'circle' && <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: shape.color, filter: 'blur(35px)', opacity: 0.2 }} />}
@@ -52,7 +59,7 @@ const GeometricBackground = () => {
 
       {/* Decorative Background - RIGHT SIDE */}
       <div style={{ position: 'absolute', top: 0, right: '-200px', width: '350px', height: '100%', pointerEvents: 'none', zIndex: 0, opacity: 0.6, overflow: 'visible' }}>
-        {[
+        {React.useMemo(() => [
           { type: 'diamond', color: '#0ea5e9', size: 130, top: '4%', left: '20%', rotate: 15 },
           { type: 'star', color: '#8b5cf6', size: 110, top: '10%', left: '55%', rotate: -10 },
           { type: 'pentagon', color: '#10b981', size: 95, top: '16%', left: '10%', rotate: 25 },
@@ -69,11 +76,11 @@ const GeometricBackground = () => {
           { type: 'square', color: '#ec4899', size: 110, top: '82%', left: '15%', rotate: 20 },
           { type: 'diamond', color: '#6366f1', size: 100, top: '88%', left: '60%', rotate: -10 },
           { type: 'ring', color: '#f59e0b', size: 120, top: '94%', left: '30%' },
-        ].map((shape, i) => (
+        ].sort(() => 0.5 - Math.random()).slice(0, 10).map(randomizeShape), [activeTab]).map((shape, i) => (
           <motion.div
             key={`global-right-${i}`} initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0, y: [0, -40, 0], rotate: [shape.rotate || 0, (shape.rotate || 0) - 20, shape.rotate || 0] }}
-            transition={{ duration: 9 + i, repeat: Infinity, delay: i * 0.4, ease: "easeInOut" }}
+            animate={{ opacity: 1, x: 0, y: 0, rotate: shape.rotate || 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
             style={{ position: 'absolute', top: shape.top, left: shape.left, width: shape.size, height: shape.size }}
           >
             {shape.type === 'circle' && <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: shape.color, filter: 'blur(40px)', opacity: 0.2 }} />}
@@ -126,6 +133,7 @@ const App = () => {
   const [demoTick, setDemoTick] = useState(0);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [barColor, setBarColor] = useState('#ef4444');
 
   useEffect(() => {
     const handleUpdate = () => setDemoTick(t => t + 1);
@@ -207,15 +215,23 @@ const App = () => {
     }
   };
 
-  // Fetch Profile on login or when entering practice tab
+  // Keep a ref to user.id so fetchProfile doesn't re-trigger on user object change
+  const userIdRef = useRef(user?.id);
+  useEffect(() => { userIdRef.current = user?.id; }, [user?.id]);
+
+  // Fetch Profile on login or when entering practice/profile/price-plan tab
   useEffect(() => {
-    if (isAuthenticated && user && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan')) {
+    if (isAuthenticated && userIdRef.current && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan')) {
       fetchProfile();
     }
-  }, [isAuthenticated, user, activeTab]);
+  }, [isAuthenticated, activeTab]);
 
-  // Sync Tab to URL
+  // Sync Tab to URL + Change Bar Color
   useEffect(() => {
+    // Select Random Color for Sidebar
+    const sideColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#06b6d4', '#f97316', '#a16207', '#6b7280'];
+    setBarColor(sideColors[Math.floor(Math.random() * sideColors.length)]);
+
     if (activeTab === 'home') {
       if (window.location.pathname !== '/' && window.location.pathname !== '/payment-success') {
         window.history.pushState({}, '', '/' + window.location.search);
@@ -392,7 +408,9 @@ const App = () => {
           label: 'Admin Tools',
           icon: ShieldCheck,
           subItems: [
-            { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus }
+            { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
+            { id: 'master-evaluation', label: 'Master Evaluation', icon: Settings },
+            { id: 'user-management', label: 'User Management', icon: Users }
           ]
         }] : []),
         { id: 'practice', label: 'Your Speech', icon: Video },
@@ -400,7 +418,7 @@ const App = () => {
       ]
       : [{ id: 'signup', label: 'Sign In', icon: LogIn }]
     ),
-    { id: 'price-plan', label: 'Price Plan', icon: Check },
+    ...(user?.role !== 'student' ? [{ id: 'price-plan', label: 'Price Plan', icon: Check }] : []),
     { id: 'faq', label: 'FAQ', icon: HelpCircle },
     { id: 'contact', label: 'Contact Us', icon: Mail },
     ...(isAuthenticated ? [{ id: 'logout', label: '', icon: LogOut, tooltip: 'Logout' }] : []),
@@ -457,6 +475,8 @@ const App = () => {
         return <ClassSetup user={user} />;
       case 'admin-tools':
       case 'setup-instructor':
+      case 'master-evaluation':
+      case 'user-management':
         return <AdminTools user={user} activeSubTab={activeTab === 'admin-tools' ? 'setup-instructor' : activeTab} />;
       case 'profile':
         return <Profile user={user} refreshAppProfile={fetchProfile} />;
@@ -812,19 +832,20 @@ const App = () => {
                     </div>
                     <button
                       onClick={handleReactivateSubscription}
-                      disabled={true}
                       style={{
                         padding: '0.8rem 2.5rem',
                         background: 'var(--accent-gradient)',
                         color: 'white',
                         borderRadius: '2rem',
                         border: 'none',
-                        cursor: 'not-allowed',
+                        cursor: 'pointer',
                         fontWeight: '600',
                         width: 'auto',
-                        boxShadow: 'none',
-                        opacity: 0.6
+                        boxShadow: 'var(--shadow-glow)',
+                        transition: 'all 0.3s ease'
                       }}
+                      onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
                       Renew Subscription
                     </button>
@@ -832,19 +853,20 @@ const App = () => {
                 ) : (
                   <button
                     onClick={handleBuyPlan}
-                    disabled={true}
                     style={{
                       padding: '0.8rem 2.5rem',
                       background: 'var(--accent-gradient)',
                       color: 'white',
                       borderRadius: '2rem',
                       border: 'none',
-                      cursor: 'not-allowed',
+                      cursor: 'pointer',
                       fontWeight: '600',
                       width: 'auto',
-                      boxShadow: 'none',
-                      opacity: 0.6
+                      boxShadow: 'var(--shadow-glow)',
+                      transition: 'all 0.3s ease'
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
                     Buy Pro Plan
                   </button>
@@ -866,6 +888,9 @@ const App = () => {
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Persistent Left/Right Vertical Colored Bars */}
+      <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '16px', zIndex: 9999, background: barColor, boxShadow: `2px 0 10px ${barColor}99`, transition: 'background-color 0.5s ease, box-shadow 0.5s ease' }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '16px', zIndex: 9999, background: barColor, boxShadow: `-2px 0 10px ${barColor}99`, transition: 'background-color 0.5s ease, box-shadow 0.5s ease' }} />
 
       {/* Theme Switcher Overlay */}
       <AnimatePresence>
@@ -1142,7 +1167,7 @@ const App = () => {
         justifyContent: 'flex-start',
         color: 'var(--text-primary)'
       }}>
-        <GeometricBackground />
+        <GeometricBackground activeTab={activeTab} />
         <AnimatePresence mode='wait'>
           <motion.div
             key={activeTab}
