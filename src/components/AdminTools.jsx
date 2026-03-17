@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Shield, CheckCircle, AlertCircle, Loader2, Mail, Save, Plus, Trash2, Edit3, ClipboardList, X } from 'lucide-react';
+import { UserPlus, Shield, CheckCircle, AlertCircle, Loader2, Mail, Save, Plus, Trash2, Edit3, ClipboardList, X, MessageSquare, ChevronDown, ChevronUp, Clock, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 
@@ -26,6 +26,31 @@ const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const [usersMsg, setUsersMsg] = useState({ text: '', type: '' });
 
+    // ── Email Coach State ──
+    const defaultEmailBody = `Hi Coach
+
+I love the work you're doing with your school's debate and speaking courses.
+I'm the creator of https://practiceyourspeech.com, a platform designed to act as 'additional help' for your students. 
+We allow coaches to create classes where students can practice on camera and get immediate AI feedback on their delivery mechanics (pacing, filler words, etc.) before they even step into your classroom.
+I'm looking for expert coaches to pilot the platform with their students for free in exchange for feedback to help us improve.
+Would you be open to a quick chat to see if this could be useful for your team this season?
+
+Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
+
+-Practice your Speech team`;
+    const [coachEmail, setCoachEmail] = useState('');
+    const [emailSubject, setEmailSubject] = useState('Partnership with PracticeYourSpeech');
+    const [emailBody, setEmailBody] = useState(defaultEmailBody);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [emailMsg, setEmailMsg] = useState({ text: '', type: '' });
+
+    // ── Messages State ──
+    const [contactMessages, setContactMessages] = useState([]);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [messagesMsg, setMessagesMsg] = useState({ text: '', type: '' });
+    const [expandedMessageId, setExpandedMessageId] = useState(null);
+    const [messagesSearch, setMessagesSearch] = useState('');
+
     // Fetch data when switching tabs
     useEffect(() => {
         if (activeSubTab === 'master-evaluation' && !criteria) {
@@ -33,6 +58,9 @@ const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
         }
         if (activeSubTab === 'user-management' && usersList.length === 0) {
             fetchUsersList();
+        }
+        if (activeSubTab === 'messages' && contactMessages.length === 0) {
+            fetchContactMessages();
         }
     }, [activeSubTab]);
 
@@ -55,6 +83,28 @@ const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
             setUsersMsg({ text: 'Connection error.', type: 'error' });
         } finally {
             setIsLoadingUsers(false);
+        }
+    };
+
+    const fetchContactMessages = async () => {
+        setIsLoadingMessages(true);
+        setMessagesMsg({ text: '', type: '' });
+        try {
+            const res = await fetch(`${API_BASE_URL}/get-contact-messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminId: user.id || user.userId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setContactMessages(data.messages || []);
+            } else {
+                setMessagesMsg({ text: data.message || 'Failed to load messages.', type: 'error' });
+            }
+        } catch (err) {
+            setMessagesMsg({ text: 'Connection error.', type: 'error' });
+        } finally {
+            setIsLoadingMessages(false);
         }
     };
 
@@ -159,6 +209,22 @@ const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
     };
 
     const formatLabel = (key) => key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    const getRelativeTime = (dateStr) => {
+        const now = new Date();
+        const date = new Date(dateStr);
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+        return date.toLocaleDateString();
+    };
 
     const handlePromote = async (e) => {
         e.preventDefault();
@@ -675,6 +741,422 @@ const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                    {/* ══════════════ EMAIL COACH ══════════════ */}
+                    {activeSubTab === 'email-coach' && (
+                        <motion.div
+                            key="email-coach"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="glass-panel"
+                            style={{ padding: '2.5rem', borderRadius: '1.5rem', color: 'var(--text-primary)', background: '#ffffff' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '1rem',
+                                    background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <Mail size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="gradient-text" style={{ fontSize: '2rem', fontWeight: '800', margin: 0 }}>Email Coach</h3>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Send an invitation to a coach.</p>
+                                </div>
+                            </div>
+
+                            {emailMsg.text && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                                    style={{
+                                        padding: '1rem', borderRadius: '0.8rem', marginBottom: '1.5rem',
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                        background: emailMsg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: emailMsg.type === 'success' ? '#10b981' : '#ef4444',
+                                        border: `1px solid ${emailMsg.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                                    }}
+                                >
+                                    {emailMsg.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                                    <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>{emailMsg.text}</span>
+                                </motion.div>
+                            )}
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Coach Email Address</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Mail style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={20} />
+                                    <input
+                                        type="email" value={coachEmail}
+                                        onChange={(e) => setCoachEmail(e.target.value)}
+                                        placeholder="coach@school.edu"
+                                        style={{
+                                            padding: '1rem 1.2rem 1rem 3.5rem', background: '#ffffff',
+                                            border: '1px solid var(--glass-border)', borderRadius: '1rem',
+                                            color: 'var(--text-primary)', fontSize: '1rem', outline: 'none', width: '100%'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Subject</label>
+                                <input
+                                    type="text" value={emailSubject}
+                                    onChange={(e) => setEmailSubject(e.target.value)}
+                                    placeholder="Email Subject"
+                                    style={{
+                                        padding: '1rem 1.2rem', background: '#ffffff',
+                                        border: '1px solid var(--glass-border)', borderRadius: '1rem',
+                                        color: 'var(--text-primary)', fontSize: '1rem', outline: 'none', width: '100%'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '2rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Message Body</label>
+                                <textarea
+                                    value={emailBody}
+                                    onChange={(e) => setEmailBody(e.target.value)}
+                                    rows={12}
+                                    style={{
+                                        padding: '1rem 1.2rem', background: '#ffffff',
+                                        border: '1px solid var(--glass-border)', borderRadius: '1rem',
+                                        color: 'var(--text-primary)', fontSize: '1rem', outline: 'none', width: '100%',
+                                        resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-start' }}>
+                                <a
+                                    href={`mailto:${coachEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                                    style={{
+                                        padding: '1rem 2rem', background: 'var(--accent-gradient)', color: 'white',
+                                        border: 'none', borderRadius: '1rem', fontWeight: '800', fontSize: '1rem',
+                                        textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                                        boxShadow: 'var(--shadow-glow)', transition: 'all 0.3s'
+                                    }}
+                                >
+                                    <Mail size={18} /> Open in Email Client
+                                </a>
+                                <button
+                                    onClick={async () => {
+                                        if (!coachEmail.trim()) {
+                                            setEmailMsg({ text: 'Please provide an email address.', type: 'error' });
+                                            return;
+                                        }
+                                        setIsSendingEmail(true);
+                                        setEmailMsg({ text: '', type: '' });
+                                        try {
+                                            const res = await fetch(`${API_BASE_URL}/send-coach-email`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    adminId: user.id || user.userId,
+                                                    email: coachEmail.trim(),
+                                                    subject: emailSubject,
+                                                    body: emailBody
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (res.ok) {
+                                                setEmailMsg({ text: 'Email sent successfully!', type: 'success' });
+                                                setCoachEmail('');
+                                            } else {
+                                                setEmailMsg({ text: data.message || 'Failed to send email.', type: 'error' });
+                                            }
+                                        } catch (err) {
+                                            setEmailMsg({ text: 'No backend email endpoint configured (use "Open in Email Client").', type: 'error' });
+                                        } finally {
+                                            setIsSendingEmail(false);
+                                        }
+                                    }}
+                                    disabled={isSendingEmail || !coachEmail}
+                                    style={{
+                                        padding: '1rem 2rem', background: '#16a34a', color: 'white',
+                                        border: 'none', borderRadius: '1rem', fontWeight: '800', fontSize: '1rem',
+                                        cursor: (isSendingEmail || !coachEmail) ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    {isSendingEmail ? <Loader2 className="spinner" size={18} /> : <><CheckCircle size={18} /> Send via Server</>}
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ══════════════ MESSAGES ══════════════ */}
+                    {activeSubTab === 'messages' && (
+                        <motion.div
+                            key="messages"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="glass-panel"
+                            style={{ padding: '2.5rem', borderRadius: '1.5rem', color: 'var(--text-primary)', background: '#ffffff' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '1rem',
+                                    background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <MessageSquare size={24} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h3 className="gradient-text" style={{ fontSize: '2rem', fontWeight: '800', margin: 0 }}>Messages</h3>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View all contact form submissions and user communications.</p>
+                                </div>
+                                <button
+                                    onClick={fetchContactMessages}
+                                    disabled={isLoadingMessages}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        padding: '0.75rem 1.25rem', borderRadius: '0.8rem',
+                                        background: '#a855f7', color: 'white',
+                                        border: 'none', fontWeight: '700', cursor: isLoadingMessages ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.95rem', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isLoadingMessages ? <Loader2 className="spinner" size={16} /> : <Clock size={16} />} Refresh
+                                </button>
+                            </div>
+
+                            {messagesMsg.text && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                                    style={{
+                                        padding: '1rem', borderRadius: '0.8rem', marginBottom: '1.5rem',
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                        background: messagesMsg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: messagesMsg.type === 'success' ? '#10b981' : '#ef4444',
+                                        border: `1px solid ${messagesMsg.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                                    }}
+                                >
+                                    {messagesMsg.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                                    <span style={{ fontWeight: '500' }}>{messagesMsg.text}</span>
+                                </motion.div>
+                            )}
+
+                            {/* Search */}
+                            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+                                <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
+                                <input
+                                    type="text"
+                                    value={messagesSearch}
+                                    onChange={(e) => setMessagesSearch(e.target.value)}
+                                    placeholder="Search by email, subject, or message..."
+                                    style={{
+                                        width: '100%', padding: '0.9rem 1rem 0.9rem 3rem',
+                                        background: '#fafafa', border: '1px solid var(--glass-border)',
+                                        borderRadius: '0.8rem', fontSize: '0.95rem', color: '#1a1a1a',
+                                        outline: 'none', transition: 'border 0.2s'
+                                    }}
+                                />
+                            </div>
+
+                            {/* Stats Bar */}
+                            {!isLoadingMessages && contactMessages.length > 0 && (
+                                <div style={{
+                                    display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap'
+                                }}>
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        padding: '0.6rem 1.2rem', borderRadius: '2rem',
+                                        background: 'rgba(168, 85, 247, 0.08)', color: '#a855f7',
+                                        fontSize: '0.85rem', fontWeight: '700'
+                                    }}>
+                                        <MessageSquare size={14} />
+                                        {contactMessages.length} Total Messages
+                                    </div>
+                                    {messagesSearch && (
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            padding: '0.6rem 1.2rem', borderRadius: '2rem',
+                                            background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb',
+                                            fontSize: '0.85rem', fontWeight: '700'
+                                        }}>
+                                            <Search size={14} />
+                                            {contactMessages.filter(m => {
+                                                const q = messagesSearch.toLowerCase();
+                                                return (m.email || '').toLowerCase().includes(q) ||
+                                                    (m.subject || '').toLowerCase().includes(q) ||
+                                                    (m.message || '').toLowerCase().includes(q);
+                                            }).length} Matching
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Messages List */}
+                            {isLoadingMessages && contactMessages.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                    <Loader2 className="spinner" size={32} style={{ marginBottom: '1rem' }} />
+                                    <p>Loading messages...</p>
+                                </div>
+                            ) : contactMessages.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                    <MessageSquare size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                                    <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>No messages yet</p>
+                                    <p style={{ fontSize: '0.9rem' }}>Contact form submissions will appear here.</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {contactMessages
+                                        .filter(m => {
+                                            if (!messagesSearch) return true;
+                                            const q = messagesSearch.toLowerCase();
+                                            return (m.email || '').toLowerCase().includes(q) ||
+                                                (m.subject || '').toLowerCase().includes(q) ||
+                                                (m.message || '').toLowerCase().includes(q);
+                                        })
+                                        .map((msg) => {
+                                            const isExpanded = expandedMessageId === msg.messageId;
+                                            const dateStr = msg.createdAt ? new Date(msg.createdAt).toLocaleString() : 'N/A';
+                                            const relativeTime = msg.createdAt ? getRelativeTime(msg.createdAt) : '';
+
+                                            return (
+                                                <motion.div
+                                                    key={msg.messageId}
+                                                    layout
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    style={{
+                                                        borderRadius: '1rem',
+                                                        border: isExpanded ? '2px solid rgba(168, 85, 247, 0.3)' : '1px solid var(--glass-border)',
+                                                        background: isExpanded ? 'rgba(168, 85, 247, 0.02)' : '#fafafa',
+                                                        overflow: 'hidden', transition: 'all 0.2s', cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => setExpandedMessageId(isExpanded ? null : msg.messageId)}
+                                                >
+                                                    {/* Collapsed Header */}
+                                                    <div style={{
+                                                        padding: '1.25rem 1.5rem',
+                                                        display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap'
+                                                    }}>
+                                                        <div style={{
+                                                            width: '40px', height: '40px', borderRadius: '50%',
+                                                            background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            color: 'white', fontSize: '0.85rem', fontWeight: '800',
+                                                            flexShrink: 0, textTransform: 'uppercase'
+                                                        }}>
+                                                            {(msg.email || '?')[0]}
+                                                        </div>
+                                                        <div style={{ flex: 1, minWidth: '200px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                                <span style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1rem' }}>{msg.email}</span>
+                                                                <span style={{
+                                                                    padding: '0.15rem 0.5rem', borderRadius: '0.4rem',
+                                                                    background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7',
+                                                                    fontSize: '0.7rem', fontWeight: '600'
+                                                                }}>
+                                                                    {relativeTime}
+                                                                </span>
+                                                            </div>
+                                                            <div style={{
+                                                                fontSize: '0.9rem', color: '#475569', fontWeight: '500',
+                                                                marginTop: '0.25rem',
+                                                                maxWidth: '600px', overflow: 'hidden',
+                                                                textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {msg.subject || '(No Subject)'}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                                                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Expanded Content */}
+                                                    <AnimatePresence>
+                                                        {isExpanded && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                style={{ overflow: 'hidden' }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <div style={{
+                                                                    padding: '0 1.5rem 1.5rem 1.5rem',
+                                                                    borderTop: '1px solid rgba(168, 85, 247, 0.1)'
+                                                                }}>
+                                                                    <div style={{
+                                                                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                                                        gap: '1rem', marginTop: '1.25rem', marginBottom: '1.25rem'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            padding: '0.75rem 1rem', borderRadius: '0.7rem',
+                                                                            background: 'rgba(37, 99, 235, 0.05)', border: '1px solid rgba(37, 99, 235, 0.1)'
+                                                                        }}>
+                                                                            <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: '700', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</div>
+                                                                            <div style={{ fontSize: '0.9rem', color: '#1a1a1a', fontWeight: '600' }}>{msg.email}</div>
+                                                                        </div>
+                                                                        <div style={{
+                                                                            padding: '0.75rem 1rem', borderRadius: '0.7rem',
+                                                                            background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.1)'
+                                                                        }}>
+                                                                            <div style={{ fontSize: '0.7rem', color: '#a855f7', fontWeight: '700', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subject</div>
+                                                                            <div style={{ fontSize: '0.9rem', color: '#1a1a1a', fontWeight: '600' }}>{msg.subject || '(No Subject)'}</div>
+                                                                        </div>
+                                                                        <div style={{
+                                                                            padding: '0.75rem 1rem', borderRadius: '0.7rem',
+                                                                            background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)'
+                                                                        }}>
+                                                                            <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Received</div>
+                                                                            <div style={{ fontSize: '0.9rem', color: '#1a1a1a', fontWeight: '600' }}>{dateStr}</div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div style={{
+                                                                        padding: '1.25rem', borderRadius: '0.8rem',
+                                                                        background: '#ffffff', border: '1px solid var(--glass-border)',
+                                                                        fontSize: '0.95rem', color: '#334155', lineHeight: '1.7',
+                                                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                                                        fontFamily: 'inherit'
+                                                                    }}>
+                                                                        {msg.message || '(No message body)'}
+                                                                    </div>
+
+                                                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                                                                        <a
+                                                                            href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject || '')}`}
+                                                                            style={{
+                                                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                                                padding: '0.6rem 1.2rem', borderRadius: '0.7rem',
+                                                                                background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb',
+                                                                                textDecoration: 'none', fontWeight: '600', fontSize: '0.85rem',
+                                                                                transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            <Mail size={14} /> Reply
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    {contactMessages.filter(m => {
+                                        if (!messagesSearch) return true;
+                                        const q = messagesSearch.toLowerCase();
+                                        return (m.email || '').toLowerCase().includes(q) ||
+                                            (m.subject || '').toLowerCase().includes(q) ||
+                                            (m.message || '').toLowerCase().includes(q);
+                                    }).length === 0 && messagesSearch && (
+                                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                                <Search size={32} style={{ marginBottom: '0.5rem', opacity: 0.3 }} />
+                                                <p>No messages match your search.</p>
+                                            </div>
+                                        )}
                                 </div>
                             )}
                         </motion.div>

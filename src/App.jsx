@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown } from 'lucide-react';
+import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown, MessageSquare } from 'lucide-react';
 
 const GeometricBackground = ({ activeTab }) => {
   const randomizeShape = (shape) => ({
@@ -410,7 +410,9 @@ const App = () => {
           subItems: [
             { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
             { id: 'master-evaluation', label: 'Master Evaluation', icon: Settings },
-            { id: 'user-management', label: 'User Management', icon: Users }
+            { id: 'user-management', label: 'User Management', icon: Users },
+            { id: 'email-coach', label: 'Email Coach', icon: Mail },
+            { id: 'messages', label: 'Messages', icon: MessageSquare }
           ]
         }] : []),
         { id: 'practice', label: 'Your Speech', icon: Video },
@@ -477,6 +479,8 @@ const App = () => {
       case 'setup-instructor':
       case 'master-evaluation':
       case 'user-management':
+      case 'email-coach':
+      case 'messages':
         return <AdminTools user={user} activeSubTab={activeTab === 'admin-tools' ? 'setup-instructor' : activeTab} />;
       case 'profile':
         return <Profile user={user} refreshAppProfile={fetchProfile} />;
@@ -888,9 +892,8 @@ const App = () => {
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Persistent Left/Right Vertical Colored Bars */}
+      {/* Persistent Left Vertical Colored Bar */}
       <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '16px', zIndex: 9999, background: barColor, boxShadow: `2px 0 10px ${barColor}99`, transition: 'background-color 0.5s ease, box-shadow 0.5s ease' }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '16px', zIndex: 9999, background: barColor, boxShadow: `-2px 0 10px ${barColor}99`, transition: 'background-color 0.5s ease, box-shadow 0.5s ease' }} />
 
       {/* Theme Switcher Overlay */}
       <AnimatePresence>
