@@ -283,6 +283,66 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
         }
     };
 
+    const handleUpdateQuota = async (userId, email, currentCount) => {
+        const newVal = window.prompt(`Update monthly speech count for ${email}\n(Currently ${currentCount}):`, currentCount);
+        if (newVal === null) return;
+        const parsed = parseInt(newVal, 10);
+        if (isNaN(parsed) || parsed < 0) {
+            alert("Please enter a valid positive number.");
+            return;
+        }
+        setIsLoadingUsers(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/update-speech-quota`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: user.id || user.userId,
+                    targetUserId: userId,
+                    newMonthlyCount: parsed
+                })
+            });
+            if (res.ok) {
+                setUsersList(prev => prev.map(u => u.userId === userId ? { ...u, monthlySpeechCount: parsed } : u));
+                setUsersMsg({ text: `Updated speech count for ${email} to ${parsed}`, type: 'success' });
+            } else {
+                setUsersMsg({ text: 'Failed to update quota.', type: 'error' });
+            }
+        } catch (err) {
+            setUsersMsg({ text: 'Connection error.', type: 'error' });
+        } finally {
+            setIsLoadingUsers(false);
+            setTimeout(() => setUsersMsg({ text: '', type: '' }), 3000);
+        }
+    };
+
+    const handleDeleteUser = async (userId, email) => {
+        if (!window.confirm(`Are you sure you want to permanently delete the user ${email}? This action cannot be undone.`)) return;
+        setIsLoadingUsers(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/delete-user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: user.id || user.userId,
+                    targetUserId: userId
+                })
+            });
+            if (res.ok) {
+                setUsersList(prev => prev.filter(u => u.userId !== userId));
+                setUsersMsg({ text: `Successfully deleted user ${email}`, type: 'success' });
+            } else {
+                const data = await res.json();
+                setUsersMsg({ text: data.message || 'Failed to delete user.', type: 'error' });
+            }
+        } catch (err) {
+            setUsersMsg({ text: 'Connection error.', type: 'error' });
+        } finally {
+            setIsLoadingUsers(false);
+            setTimeout(() => setUsersMsg({ text: '', type: '' }), 5000);
+        }
+    };
+
     return (
         <div style={{ maxWidth: activeSubTab === 'user-management' ? '1200px' : '900px', margin: '0 auto', width: '100%', padding: '2rem', transition: 'max-width 0.3s ease' }}>
             <div style={{ width: '100%' }}>
@@ -700,6 +760,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                 <th style={{ padding: '1rem' }}>Joined</th>
                                                 <th style={{ padding: '1rem' }}>Speeches (Mo | Tot)</th>
                                                 <th style={{ padding: '1rem', textAlign: 'center' }}>Update Role</th>
+                                                <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -718,7 +779,21 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>{u.plan === 'pro' || u.plan === 'Pro' ? <span style={{ color: '#8b5cf6', fontWeight: '700' }}>PRO</span> : <span style={{ color: 'var(--text-secondary)' }}>FREE</span>}</td>
                                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
-                                                    <td style={{ padding: '1rem', fontWeight: '600' }}>{u.monthlySpeechCount} <span style={{ color: 'var(--text-secondary)' }}>|</span> {u.totalSpeechCount}</td>
+                                                    <td style={{ padding: '1rem', fontWeight: '600' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            {u.monthlySpeechCount} <span style={{ color: 'var(--text-secondary)' }}>|</span> {u.totalSpeechCount}
+                                                            <button 
+                                                                onClick={() => handleUpdateQuota(u.userId, u.email, u.monthlySpeechCount)}
+                                                                style={{
+                                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                                    color: '#0ea5e9', padding: '0.2rem', display: 'flex'
+                                                                }}
+                                                                title="Edit Monthly Quota"
+                                                            >
+                                                                <Edit3 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                                                         <select
                                                             value={u.role}
@@ -734,10 +809,23 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                             {u.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
                                                         </select>
                                                     </td>
+                                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                        <button 
+                                                            onClick={() => handleDeleteUser(u.userId, u.email)}
+                                                            disabled={isLoadingUsers || u.role === 'super_admin'}
+                                                            style={{
+                                                                background: 'none', border: 'none', cursor: u.role === 'super_admin' ? 'not-allowed' : 'pointer',
+                                                                color: u.role === 'super_admin' ? '#cbd5e1' : '#ef4444', padding: '0.4rem', margin: '0 auto', display: 'flex'
+                                                            }}
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                             {usersList.length === 0 && (
-                                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No users found.</td></tr>
+                                                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No users found.</td></tr>
                                             )}
                                         </tbody>
                                     </table>

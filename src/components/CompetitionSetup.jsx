@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Plus, Trash2, CheckCircle, Users, BookOpen,
+    Plus, Trash2, CheckCircle, Users, Trophy,
     AlertCircle, Loader2, X, UserPlus, Mail, ClipboardList, PlusCircle, UserMinus, FileText, BarChart2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,8 +45,8 @@ const ModalOverlay = ({ zIndex = 1000, onClose, children }) => (
 );
 
 // ── Manage Criteria Modal ─────────────────────────────────────────────────────
-const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }) => {
-    const [items, setItems] = useState([...(cls.criteria || [])]);
+const ManageCriteriaModal = ({ competition, user, masterCriteria = [], onSave, onClose }) => {
+    const [items, setItems] = useState([...(competition.criteria || [])]);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -62,10 +62,10 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
     const handleSave = async () => {
         setIsSaving(true); setError('');
         try {
-            const res = await fetch(`${API_BASE_URL}/update-class-criteria`, {
+            const res = await fetch(`${API_BASE_URL}/update-competition-criteria`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id || user.userId, classId: cls.classId, criteria: items })
+                body: JSON.stringify({ userId: user.id || user.userId, competitionId: competition.competitionId, criteria: items })
             });
             const data = await res.json();
             if (res.ok) {
@@ -101,7 +101,7 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                             Update Evaluation Focus
                         </h3>
                         <p style={{ color: '#64748b', fontSize: '1rem' }}>
-                            Class: <span style={{ color: '#2563eb', fontWeight: '700' }}>{cls.className}</span>
+                            Competition: <span style={{ color: '#d97706', fontWeight: '700' }}>{competition.competitionName}</span>
                         </p>
                     </div>
                     <button onClick={onClose} style={{
@@ -113,7 +113,7 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                 {/* Body */}
                 <div style={{ overflowY: 'auto', flex: 1, padding: '1.75rem 2rem' }}>
                     <p style={{ color: '#64748b', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                        Select the areas you want the AI to analyze for this class. These criteria directly influence the feedback students receive.
+                        Select the areas you want the AI to evaluate for this competition. These criteria directly influence the feedback participants receive.
                     </p>
 
                     {/* Checkbox Grid */}
@@ -136,8 +136,8 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                                         gap: '0.75rem',
                                         padding: '0.9rem 1rem',
                                         borderRadius: '0.9rem',
-                                        background: isSelected ? 'rgba(37,99,235,0.06)' : '#f8fafc',
-                                        border: `1px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
+                                        background: isSelected ? 'rgba(245,158,11,0.06)' : '#f8fafc',
+                                        border: `1px solid ${isSelected ? '#d97706' : '#e2e8f0'}`,
                                         cursor: 'pointer',
                                         transition: 'all 0.15s ease'
                                     }}
@@ -146,8 +146,8 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                                         width: '20px',
                                         height: '20px',
                                         borderRadius: '5px',
-                                        border: `2px solid ${isSelected ? '#2563eb' : '#cbd5e1'}`,
-                                        background: isSelected ? '#2563eb' : 'transparent',
+                                        border: `2px solid ${isSelected ? '#d97706' : '#cbd5e1'}`,
+                                        background: isSelected ? '#d97706' : 'transparent',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -164,7 +164,7 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                                     <span style={{
                                         fontSize: '0.95rem',
                                         fontWeight: isSelected ? '700' : '500',
-                                        color: isSelected ? '#1e3a8a' : '#475569'
+                                        color: isSelected ? '#92400e' : '#475569'
                                     }}>
                                         {label}
                                     </span>
@@ -188,7 +188,7 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
                         borderRadius: '0.75rem', color: '#374151', fontWeight: '600', cursor: 'pointer', fontSize: '1rem'
                     }}>Cancel</button>
                     <button onClick={handleSave} disabled={isSaving} style={{
-                        padding: '0.8rem 2rem', background: '#2563eb', border: 'none',
+                        padding: '0.8rem 2rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none',
                         borderRadius: '0.75rem', color: '#fff', fontWeight: '800', fontSize: '1rem',
                         cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1,
                         display: 'flex', alignItems: 'center', gap: '0.5rem'
@@ -202,8 +202,8 @@ const ManageCriteriaModal = ({ cls, user, masterCriteria = [], onSave, onClose }
     );
 };
 
-// ── Manage Students Modal ─────────────────────────────────────────────────────
-const ManageStudentsModal = ({ cls, user, onClose }) => {
+// ── Manage Participants Modal ─────────────────────────────────────────────────
+const ManageParticipantsModal = ({ competition, user, onClose }) => {
     const [emailInput, setEmailInput] = useState('');
     const [students, setStudents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -211,30 +211,30 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    useEffect(() => { fetchStudents(); }, []);
+    useEffect(() => { fetchParticipants(); }, []);
 
-    const fetchStudents = async () => {
+    const fetchParticipants = async () => {
         setIsLoading(true); setError('');
         try {
-            const res = await fetch(`${API_BASE_URL}/get-class-students`, {
+            const res = await fetch(`${API_BASE_URL}/get-competition-participants`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ classId: cls.classId, userId: user.id || user.userId })
+                body: JSON.stringify({ competitionId: competition.competitionId, userId: user.id || user.userId })
             });
             const data = await res.json();
             if (res.ok) setStudents(data.students || []);
-            else setError(data.message || 'Failed to load students');
+            else setError(data.message || 'Failed to load participants');
         } catch { setError('Connection error.'); }
         finally { setIsLoading(false); }
     };
 
-    const handleAddStudents = async () => {
+    const handleAddParticipants = async () => {
         const emails = emailInput.split(/[\n,]+/).map(e => e.trim()).filter(e => e && e.includes('@'));
         if (!emails.length) { setError('Please enter at least one valid email address.'); return; }
         setIsSaving(true); setError(''); setSuccess('');
         try {
-            const res = await fetch(`${API_BASE_URL}/add-students-to-class`, {
+            const res = await fetch(`${API_BASE_URL}/add-participants-to-competition`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instructorId: user.id || user.userId, classId: cls.classId, emails })
+                body: JSON.stringify({ instructorId: user.id || user.userId, competitionId: competition.competitionId, emails })
             });
             const data = await res.json();
             if (res.ok) {
@@ -244,24 +244,24 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                 const parts = [];
                 if (created) parts.push(`${created} new account(s) created & email sent`);
                 if (linked) parts.push(`${linked} existing account(s) linked`);
-                setSuccess(parts.join(' · ') || `${results.length} student(s) processed.`);
+                setSuccess(parts.join(' · ') || `${results.length} participant(s) processed.`);
                 setEmailInput('');
                 setTimeout(() => setSuccess(''), 6000);
-                fetchStudents();
-            } else { setError(data.message || 'Failed to add students.'); }
+                fetchParticipants();
+            } else { setError(data.message || 'Failed to add participants.'); }
         } catch { setError('Connection error.'); }
         finally { setIsSaving(false); }
     };
 
-    const handleRemoveStudent = async (student) => {
-        if (!window.confirm(`Remove ${student.name || student.email} from this class?\n\nThis will also permanently delete their account.`)) return;
+    const handleRemoveParticipant = async (student) => {
+        if (!window.confirm(`Remove ${student.name || student.email} from this competition?\n\nThis will also permanently delete their account if not enrolled elsewhere.`)) return;
         setError(''); setSuccess('');
         try {
-            const res = await fetch(`${API_BASE_URL}/remove-student-from-class`, {
+            const res = await fetch(`${API_BASE_URL}/remove-participant-from-competition`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     instructorId: user.id || user.userId,
-                    classId: cls.classId,
+                    competitionId: competition.competitionId,
                     studentEmail: student.email,
                     studentUserId: student.userId || ''
                 })
@@ -270,8 +270,8 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
             if (res.ok) {
                 setSuccess(`${student.email} removed successfully.`);
                 setTimeout(() => setSuccess(''), 4000);
-                fetchStudents();
-            } else { setError(data.message || 'Failed to remove student.'); }
+                fetchParticipants();
+            } else { setError(data.message || 'Failed to remove participant.'); }
         } catch { setError('Connection error.'); }
     };
 
@@ -296,11 +296,11 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                 }}>
                     <div>
                         <h3 style={{ fontSize: '1.7rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.25rem' }}>
-                            Manage Students
+                            Manage Participants
                         </h3>
                         <p style={{ color: '#64748b', fontSize: '1rem' }}>
-                            <span style={{ color: '#16a34a', fontWeight: '700' }}>{cls.className}</span>
-                            {' '}— enroll students or link existing accounts
+                            <span style={{ color: '#d97706', fontWeight: '700' }}>{competition.competitionName}</span>
+                            {' '}— add participants or link existing accounts
                         </p>
                     </div>
                     <button onClick={onClose} style={{
@@ -315,14 +315,14 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                     {/* Email textarea */}
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: '#374151', fontSize: '1rem' }}>
-                            Add Students by Email
+                            Add Participants by Email
                         </label>
                         <div style={{ position: 'relative' }}>
-                            <Mail size={15} style={{ position: 'absolute', left: '0.9rem', top: '1rem', color: '#16a34a', pointerEvents: 'none' }} />
+                            <Mail size={15} style={{ position: 'absolute', left: '0.9rem', top: '1rem', color: '#d97706', pointerEvents: 'none' }} />
                             <textarea
                                 value={emailInput}
                                 onChange={e => setEmailInput(e.target.value)}
-                                placeholder={'student1@school.edu\nstudent2@school.edu\n(one per line or comma-separated)'}
+                                placeholder={'participant1@email.com\nparticipant2@email.com\n(one per line or comma-separated)'}
                                 rows={5}
                                 style={{
                                     width: '100%', padding: '0.9rem 0.9rem 0.9rem 2.4rem',
@@ -337,25 +337,25 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                         {/* Info hint */}
                         <div style={{
                             marginTop: '0.65rem', padding: '0.7rem 1rem',
-                            background: '#f0f9ff', borderRadius: '0.7rem', border: '1px solid #bae6fd',
-                            fontSize: '0.95rem', color: '#0369a1', lineHeight: '1.6'
+                            background: '#fffbeb', borderRadius: '0.7rem', border: '1px solid #fde68a',
+                            fontSize: '0.95rem', color: '#92400e', lineHeight: '1.6'
                         }}>
-                            🔐 <strong>New students</strong> get a temp password via email.
-                            &nbsp;<strong>Existing users</strong> are simply linked to this class.
+                            🔐 <strong>New participants</strong> get a temp password via email.
+                            &nbsp;<strong>Existing users</strong> are simply linked to this competition.
                         </div>
 
                         <button
-                            onClick={handleAddStudents} disabled={isSaving}
+                            onClick={handleAddParticipants} disabled={isSaving}
                             style={{
                                 marginTop: '0.9rem', width: '100%', padding: '0.9rem',
-                                background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff',
+                                background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff',
                                 border: 'none', borderRadius: '0.9rem', fontWeight: '800',
                                 cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '1.05rem'
                             }}
                         >
                             {isSaving ? <Loader2 className="spinner" size={19} /> : <UserPlus size={19} />}
-                            {isSaving ? 'Enrolling…' : 'Enroll Students & Send Invites'}
+                            {isSaving ? 'Adding…' : 'Add Participants & Send Invites'}
                         </button>
                     </div>
 
@@ -366,18 +366,18 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                     {/* Roster */}
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
-                            <h4 style={{ fontWeight: '700', fontSize: '1.15rem', color: '#0f172a' }}>Student Roster</h4>
-                            <span style={{ padding: '0.25rem 0.8rem', borderRadius: '999px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.95rem', fontWeight: '700', border: '1px solid #bae6fd' }}>
-                                {students.length} student{students.length !== 1 ? 's' : ''}
+                            <h4 style={{ fontWeight: '700', fontSize: '1.15rem', color: '#0f172a' }}>Participant Roster</h4>
+                            <span style={{ padding: '0.25rem 0.8rem', borderRadius: '999px', background: '#fffbeb', color: '#92400e', fontSize: '0.95rem', fontWeight: '700', border: '1px solid #fde68a' }}>
+                                {students.length} participant{students.length !== 1 ? 's' : ''}
                             </span>
                         </div>
 
                         {isLoading ? (
-                            <div style={{ textAlign: 'center', padding: '3rem' }}><Loader2 className="spinner" size={38} color="#2563eb" /></div>
+                            <div style={{ textAlign: 'center', padding: '3rem' }}><Loader2 className="spinner" size={38} color="#f59e0b" /></div>
                         ) : students.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
                                 <Users size={38} style={{ marginBottom: '0.75rem' }} />
-                                <p style={{ fontSize: '1rem' }}>No students yet. Use the field above to get started.</p>
+                                <p style={{ fontSize: '1rem' }}>No participants yet. Use the field above to get started.</p>
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -395,7 +395,7 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
                                             <div style={{
                                                 width: '36px', height: '36px', borderRadius: '50%',
-                                                background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', flexShrink: 0,
+                                                background: 'linear-gradient(135deg,#f59e0b,#d97706)', flexShrink: 0,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontSize: '0.88rem', fontWeight: '800', color: '#fff'
                                             }}>
@@ -413,8 +413,8 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                             <StatusBadge status={s.status} />
                                             <button
-                                                onClick={() => handleRemoveStudent(s)}
-                                                title="Remove student & delete account"
+                                                onClick={() => handleRemoveParticipant(s)}
+                                                title="Remove participant"
                                                 style={{
                                                     background: '#fee2e2', border: 'none', color: '#dc2626',
                                                     borderRadius: '0.5rem', padding: '0.4rem', cursor: 'pointer',
@@ -437,39 +437,39 @@ const ManageStudentsModal = ({ cls, user, onClose }) => {
                 {/* Footer */}
                 <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.92rem', color: '#64748b' }}>
                     ✉️ <strong>Account Created</strong> = new account + welcome email sent.
-                    &nbsp;🔗 <strong>Linked</strong> = existing account connected to this class.
+                    &nbsp;🔗 <strong>Linked</strong> = existing account connected to this competition.
                 </div>
             </motion.div>
         </ModalOverlay>
     );
 };
 
-// ── Main ClassSetup Component ─────────────────────────────────────────────────
-const ClassSetup = ({ user }) => {
-    const [classes, setClasses] = useState([]);
+// ── Main CompetitionSetup Component ───────────────────────────────────────────
+const CompetitionSetup = ({ user }) => {
+    const [competitions, setCompetitions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [managingClass, setManagingClass] = useState(null);
-    const [criteriaClass, setCriteriaClass] = useState(null);
-    const [evaluationsClass, setEvaluationsClass] = useState(null);
+    const [managingCompetition, setManagingCompetition] = useState(null);
+    const [criteriaCompetition, setCriteriaCompetition] = useState(null);
+    const [evaluationsCompetition, setEvaluationsCompetition] = useState(null);
 
-    const [className, setClassName] = useState('');
+    const [competitionName, setCompetitionName] = useState('');
     const [criteria, setCriteria] = useState([]);
     const [masterCriteria, setMasterCriteria] = useState([]);
 
     const isSuperAdmin = user?.role === 'super_admin';
 
     useEffect(() => {
-        fetchClasses();
+        fetchCompetitions();
         fetchMasterCriteria();
     }, []);
 
     const fetchMasterCriteria = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/get-master-criteria`, {
-                method: 'POST', // Backend expects POST as per deploy.py setup
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
             });
@@ -480,58 +480,65 @@ const ClassSetup = ({ user }) => {
         }
     };
 
-    const fetchClasses = async () => {
+    const fetchCompetitions = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/list-classes`, {
+            const res = await fetch(`${API_BASE_URL}/list-competitions`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id || user.userId })
             });
             const data = await res.json();
-            if (res.ok) setClasses(data.classes || []);
-            else setError(data.message || 'Failed to fetch classes');
+            if (res.ok) setCompetitions(data.competitions || []);
+            else setError(data.message || 'Failed to fetch competitions');
         } catch { setError('Connection error.'); }
         finally { setIsLoading(false); }
     };
 
-    const handleCreateClass = async (e) => {
+    const handleCreateCompetition = async (e) => {
         e.preventDefault();
-        if (!className.trim()) { setError('Class name is required'); return; }
+        if (!competitionName.trim()) { setError('Competition name is required'); return; }
         setIsLoading(true); setError('');
         try {
-            const res = await fetch(`${API_BASE_URL}/create-class`, {
+            const res = await fetch(`${API_BASE_URL}/create-competition`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id || user.userId, className, criteria: criteria.filter(c => c.trim()) })
+                body: JSON.stringify({ userId: user.id || user.userId, competitionName: competitionName, criteria: criteria.filter(c => c.trim()) })
             });
             const data = await res.json();
             if (res.ok) {
-                setSuccessMessage('Class created!');
-                setClassName(''); setCriteria([]);
-                setIsCreating(false); fetchClasses();
+                setSuccessMessage('Competition created!');
+                setCompetitionName(''); setCriteria([]);
+                setIsCreating(false); fetchCompetitions();
                 setTimeout(() => setSuccessMessage(''), 3000);
-            } else { setError(data.message || 'Failed to create class'); }
+            } else { setError(data.message || 'Failed to create competition'); }
         } catch { setError('Failed to connect to server'); }
         finally { setIsLoading(false); }
     };
 
-    const handleDeleteClass = async (classId) => {
-        if (!window.confirm('Delete this class? All student links will be removed.')) return;
+    const handleDeleteCompetition = async (competitionId) => {
+        if (!window.confirm('Delete this competition? All participant links will be removed.')) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/delete-class`, {
+            const res = await fetch(`${API_BASE_URL}/delete-competition`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ classId })
+                body: JSON.stringify({ competitionId })
             });
-            if (res.ok) setClasses(prev => prev.filter(c => c.classId !== classId));
+            if (res.ok) setCompetitions(prev => prev.filter(c => c.competitionId !== competitionId));
         } catch (err) { console.error('Delete error:', err); }
     };
 
-    // If viewing evaluations for a class, render the StudentEvaluations page
-    if (evaluationsClass) {
+    // If viewing evaluations for a competition, render the StudentEvaluations page
+    // We pass a "cls" prop shaped for compatibility with the existing StudentEvaluations component
+    if (evaluationsCompetition) {
+        const clsCompat = {
+            classId: evaluationsCompetition.competitionId,
+            className: evaluationsCompetition.competitionName,
+            // Tell StudentEvaluations to use competition endpoint
+            _isCompetition: true
+        };
         return (
             <StudentEvaluations
                 user={user}
-                cls={evaluationsClass}
-                onBack={() => setEvaluationsClass(null)}
+                cls={clsCompat}
+                onBack={() => setEvaluationsCompetition(null)}
             />
         );
     }
@@ -541,22 +548,22 @@ const ClassSetup = ({ user }) => {
 
             {/* Modals */}
             <AnimatePresence>
-                {managingClass && (
-                    <ManageStudentsModal
-                        cls={managingClass} user={user}
-                        onClose={() => { setManagingClass(null); fetchClasses(); }}
+                {managingCompetition && (
+                    <ManageParticipantsModal
+                        competition={managingCompetition} user={user}
+                        onClose={() => { setManagingCompetition(null); fetchCompetitions(); }}
                     />
                 )}
             </AnimatePresence>
             <AnimatePresence>
-                {criteriaClass && (
+                {criteriaCompetition && (
                     <ManageCriteriaModal
-                        cls={criteriaClass} user={user}
+                        competition={criteriaCompetition} user={user}
                         masterCriteria={masterCriteria}
-                        onSave={newCriteria => setClasses(prev => prev.map(c =>
-                            c.classId === criteriaClass.classId ? { ...c, criteria: newCriteria } : c
+                        onSave={newCriteria => setCompetitions(prev => prev.map(c =>
+                            c.competitionId === criteriaCompetition.competitionId ? { ...c, criteria: newCriteria } : c
                         ))}
-                        onClose={() => setCriteriaClass(null)}
+                        onClose={() => setCriteriaCompetition(null)}
                     />
                 )}
             </AnimatePresence>
@@ -565,12 +572,12 @@ const ClassSetup = ({ user }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <div>
                     <h2 className="gradient-text" style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '0.5rem' }}>
-                        {isSuperAdmin ? 'All Classes (Admin View)' : 'Class Management'}
+                        {isSuperAdmin ? 'All Competitions (Admin View)' : 'Competition Management'}
                     </h2>
                     <p style={{ color: 'var(--text-secondary)' }}>
                         {isSuperAdmin
-                            ? `Viewing all classes across all instructors — ${classes.length} class${classes.length !== 1 ? 'es' : ''} total.`
-                            : 'Create classes, set evaluation criteria, and enroll students automatically via email.'
+                            ? `Viewing all competitions across all instructors — ${competitions.length} competition${competitions.length !== 1 ? 's' : ''} total.`
+                            : 'Create competitions, set evaluation criteria, and add participants automatically via email.'
                         }
                     </p>
                 </div>
@@ -581,7 +588,7 @@ const ClassSetup = ({ user }) => {
                         color: 'var(--text-primary)', border: 'none', borderRadius: '1rem',
                         fontWeight: '700', cursor: 'pointer', boxShadow: 'var(--shadow-glow)'
                     }}>
-                        <Plus size={20} /> Create New Class
+                        <Plus size={20} /> Create New Competition
                     </button>
                 )}
             </div>
@@ -600,23 +607,23 @@ const ClassSetup = ({ user }) => {
 
             <AnimatePresence mode="wait">
                 {isCreating ? (
-                    /* ── Create class form ── */
+                    /* ── Create competition form ── */
                     <motion.div key="create-form"
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                         className="glass-panel" style={{ padding: '2.5rem', borderRadius: '2rem' }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                            <h3 style={{ fontSize: '1.8rem', fontWeight: '700' }}>New Class Setup</h3>
+                            <h3 style={{ fontSize: '1.8rem', fontWeight: '700' }}>New Competition Setup</h3>
                             <button onClick={() => setIsCreating(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                                 <Plus size={24} style={{ transform: 'rotate(45deg)' }} />
                             </button>
                         </div>
-                        <form onSubmit={handleCreateClass}>
+                        <form onSubmit={handleCreateCompetition}>
                             <div style={{ marginBottom: '2.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Class Name</label>
+                                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Competition Name</label>
                                 <input
-                                    type="text" value={className} onChange={e => setClassName(e.target.value)}
-                                    placeholder="e.g. Public Speaking 101 — Spring 2026"
+                                    type="text" value={competitionName} onChange={e => setCompetitionName(e.target.value)}
+                                    placeholder="e.g. Regional Speech Competition — Spring 2026"
                                     style={{ width: '100%', padding: '1.2rem', borderRadius: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', fontSize: '1.1rem', boxSizing: 'border-box', outline: 'none' }}
                                     required
                                 />
@@ -651,19 +658,19 @@ const ClassSetup = ({ user }) => {
                                                         gap: '0.85rem',
                                                         padding: '1.1rem 1.25rem',
                                                         borderRadius: '1.1rem',
-                                                        background: isSelected ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)',
-                                                        border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--glass-border)'}`,
+                                                        background: isSelected ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
+                                                        border: `1px solid ${isSelected ? '#f59e0b' : 'var(--glass-border)'}`,
                                                         cursor: 'pointer',
                                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                        boxShadow: isSelected ? '0 4px 12px rgba(56,189,248,0.1)' : 'none'
+                                                        boxShadow: isSelected ? '0 4px 12px rgba(245,158,11,0.1)' : 'none'
                                                     }}
                                                 >
                                                     <div style={{
                                                         width: '22px',
                                                         height: '22px',
                                                         borderRadius: '6px',
-                                                        border: `2px solid ${isSelected ? 'var(--accent-primary)' : 'rgba(255,255,255,0.2)'}`,
-                                                        background: isSelected ? 'var(--accent-primary)' : 'transparent',
+                                                        border: `2px solid ${isSelected ? '#f59e0b' : 'rgba(255,255,255,0.2)'}`,
+                                                        background: isSelected ? '#f59e0b' : 'transparent',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
@@ -700,41 +707,44 @@ const ClassSetup = ({ user }) => {
                             <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'flex-end' }}>
                                 <button type="button" onClick={() => setIsCreating(false)} style={{ padding: '1rem 2rem', background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '1rem', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
                                 <button type="submit" disabled={isLoading} style={{ padding: '1rem 3rem', background: 'var(--accent-gradient)', color: 'var(--text-primary)', border: 'none', borderRadius: '1rem', fontWeight: '800', cursor: 'pointer', boxShadow: 'var(--shadow-glow)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    {isLoading ? <Loader2 className="spinner" size={20} /> : 'Save Class Setup'}
+                                    {isLoading ? <Loader2 className="spinner" size={20} /> : 'Save Competition'}
                                 </button>
                             </div>
                         </form>
                     </motion.div>
                 ) : (
-                    /* ── Class cards ── */
-                    <motion.div key="class-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    /* ── Competition cards ── */
+                    <motion.div key="competition-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', gap: '2rem' }}
                     >
                         {isLoading ? (
                             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem' }}>
                                 <Loader2 className="spinner" size={48} color="var(--accent-primary)" />
                             </div>
-                        ) : classes.length === 0 ? (
+                        ) : competitions.length === 0 ? (
                             <div className="glass-panel" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem', borderRadius: '2rem' }}>
-                                <BookOpen size={64} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
-                                <h3 style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>No classes yet</h3>
-                                <p style={{ marginBottom: '2rem', opacity: 0.7 }}>Create your first class to start managing student cohorts.</p>
+                                <Trophy size={64} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
+                                <h3 style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>No competitions yet</h3>
+                                <p style={{ marginBottom: '2rem', opacity: 0.7 }}>Create your first competition to start managing participants and evaluations.</p>
                                 <button onClick={() => setIsCreating(true)} style={{ padding: '1rem 2rem', background: 'var(--accent-gradient)', color: 'var(--text-primary)', border: 'none', borderRadius: '1rem', fontWeight: '700', cursor: 'pointer' }}>
-                                    Setup First Class
+                                    Setup First Competition
                                 </button>
                             </div>
                         ) : (
-                            classes.map(cls => (
-                                <motion.div key={cls.classId} whileHover={{ y: -4 }}
+                            competitions.map(comp => (
+                                <motion.div key={comp.competitionId} whileHover={{ y: -4 }}
                                     className="glass-panel" style={{ padding: '2rem', borderRadius: '2rem', overflow: 'hidden' }}
                                 >
                                     {/* Card header */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                                         <div>
-                                            <h4 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.2rem' }}>{cls.className}</h4>
-                                            <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Created {new Date(cls.createdAt).toLocaleDateString()}</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
+                                                <Trophy size={20} color="#f59e0b" />
+                                                <h4 style={{ fontSize: '1.5rem', fontWeight: '800' }}>{comp.competitionName}</h4>
+                                            </div>
+                                            <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Created {new Date(comp.createdAt).toLocaleDateString()}</p>
                                             {/* Show instructor info for super_admin */}
-                                            {isSuperAdmin && cls.instructorName && (
+                                            {isSuperAdmin && comp.instructorName && (
                                                 <div style={{
                                                     display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                                                     marginTop: '0.5rem', padding: '0.3rem 0.85rem',
@@ -742,33 +752,33 @@ const ClassSetup = ({ user }) => {
                                                     background: 'rgba(124,58,237,0.1)', color: '#7c3aed',
                                                     border: '1px solid rgba(124,58,237,0.2)'
                                                 }}>
-                                                    👤 {cls.instructorName}
-                                                    {cls.instructorEmail && (
+                                                    👤 {comp.instructorName}
+                                                    {comp.instructorEmail && (
                                                         <span style={{ color: 'var(--text-secondary)', fontWeight: '400' }}>
-                                                            ({cls.instructorEmail})
+                                                            ({comp.instructorEmail})
                                                         </span>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
-                                        {(!isSuperAdmin || cls.instructorId === (user.id || user.userId)) && (
-                                            <button onClick={() => handleDeleteClass(cls.classId)} style={{ padding: '0.6rem', borderRadius: '0.7rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }} title="Delete Class">
+                                        {(!isSuperAdmin || comp.instructorId === (user.id || user.userId)) && (
+                                            <button onClick={() => handleDeleteCompetition(comp.competitionId)} style={{ padding: '0.6rem', borderRadius: '0.7rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }} title="Delete Competition">
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
                                     </div>
 
-                                    {/* Student count */}
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.95rem', borderRadius: '999px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', color: '#111', fontSize: '1rem', fontWeight: '700', marginBottom: '1.1rem' }}>
+                                    {/* Participant count */}
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.95rem', borderRadius: '999px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#111', fontSize: '1rem', fontWeight: '700', marginBottom: '1.1rem' }}>
                                         <Users size={15} />
-                                        {(cls.studentEmails || []).length} student{(cls.studentEmails || []).length !== 1 ? 's' : ''}
+                                        {(comp.participantEmails || []).length} participant{(comp.participantEmails || []).length !== 1 ? 's' : ''}
                                     </div>
 
                                     {/* Criteria tags */}
-                                    {cls.criteria?.length > 0 && (
+                                    {comp.criteria?.length > 0 && (
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1.25rem' }}>
-                                            {cls.criteria.map((crit, i) => (
-                                                <span key={i} style={{ padding: '0.35rem 0.8rem', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '0.5rem', fontSize: '0.95rem', color: '#111' }}>
+                                            {comp.criteria.map((crit, i) => (
+                                                <span key={i} style={{ padding: '0.35rem 0.8rem', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '0.5rem', fontSize: '0.95rem', color: '#111' }}>
                                                     {crit}
                                                 </span>
                                             ))}
@@ -777,25 +787,25 @@ const ClassSetup = ({ user }) => {
 
                                     {/* Action buttons */}
                                     <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
-                                        {/* Green — Students */}
-                                        <button onClick={() => setManagingClass(cls)}
-                                            style={{ flex: 1, padding: '0.85rem', background: '#16a34a', border: '1px solid #15803d', borderRadius: '0.9rem', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', transition: 'background 0.2s' }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = '#15803d'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = '#16a34a'; }}
+                                        {/* Amber — Participants */}
+                                        <button onClick={() => setManagingCompetition(comp)}
+                                            style={{ flex: 1, padding: '0.85rem', background: '#d97706', border: '1px solid #b45309', borderRadius: '0.9rem', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', transition: 'background 0.2s' }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = '#b45309'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = '#d97706'; }}
                                         >
-                                            <Users size={17} /> Students
+                                            <Users size={17} /> Participants
                                         </button>
                                         {/* Blue — Criteria */}
-                                        <button onClick={() => setCriteriaClass(cls)}
+                                        <button onClick={() => setCriteriaCompetition(comp)}
                                             style={{ flex: 1, padding: '0.85rem', background: '#2563eb', border: '1px solid #1d4ed8', borderRadius: '0.9rem', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', transition: 'background 0.2s' }}
                                             onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
                                         >
                                             <ClipboardList size={17} /> Criteria
                                         </button>
-                                        {/* Purple — Evaluations */}
-                                        <button onClick={() => setEvaluationsClass(cls)}
-                                            style={{ flex: 1, padding: '0.85rem', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', border: '1px solid #5b21b6', borderRadius: '0.9rem', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', transition: 'opacity 0.2s', boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}
+                                        {/* Green — Evaluations */}
+                                        <button onClick={() => setEvaluationsCompetition(comp)}
+                                            style={{ flex: 1, padding: '0.85rem', background: 'linear-gradient(135deg, #16a34a, #15803d)', border: '1px solid #166534', borderRadius: '0.9rem', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', transition: 'opacity 0.2s', boxShadow: '0 2px 8px rgba(16,163,74,0.25)' }}
                                             onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
                                             onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                                         >
@@ -817,4 +827,4 @@ const ClassSetup = ({ user }) => {
     );
 };
 
-export default ClassSetup;
+export default CompetitionSetup;

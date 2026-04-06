@@ -581,19 +581,57 @@ const AnalyzeVideo = ({ user }) => {
 
                                             {/* Filler Words & Grammar */}
                                             {(shouldShow('filler_words') || shouldShow('grammar_metrics')) && (
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
                                                     {shouldShow('filler_words') && analysisData.filler_words && (
                                                         <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Filler Words Analysis</div>
-                                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.filler_words.total || 0} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>fillers detected</span></div>
-                                                            <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.filler_words.comment}</div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Filler Words Analysis</div>
+                                                                {analysisData.filler_words.score !== undefined && (
+                                                                    <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.filler_words.score), fontSize: '0.95rem' }}>Score: {analysisData.filler_words.score}/10</div>
+                                                                )}
+                                                            </div>
+                                                            {analysisData.filler_words.total !== undefined && (
+                                                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.filler_words.total} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>fillers detected</span></div>
+                                                            )}
+                                                            {analysisData.filler_words.comment && (
+                                                                <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', marginBottom: '0.5rem' }}>{analysisData.filler_words.comment}</div>
+                                                            )}
+                                                            {Object.entries(analysisData.filler_words)
+                                                                .filter(([k]) => !['total', 'score', 'comment'].includes(k))
+                                                                .map(([k, v]) => (
+                                                                    <div key={k} style={{ marginTop: '0.8rem' }}>
+                                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', fontSize: '0.85rem', marginBottom: '0.2rem' }}>{k.replace(/_/g, ' ').toUpperCase()}:</div>
+                                                                        <div style={{ color: 'var(--text-primary)', fontSize: '0.95rem', opacity: 0.9 }}>
+                                                                            {typeof v === 'string' ? v : (Array.isArray(v) ? v.join(', ') : JSON.stringify(v))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                         </div>
                                                     )}
                                                     {shouldShow('grammar_metrics') && analysisData.grammar_metrics && (
                                                         <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
-                                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Grammar & Complexity</div>
-                                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.grammar_metrics.long_sentences_count || 0} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>long sentences</span></div>
-                                                            <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6' }}>{analysisData.grammar_metrics.suggestion}</div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Grammar & Complexity</div>
+                                                                {analysisData.grammar_metrics.score !== undefined && (
+                                                                    <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.grammar_metrics.score), fontSize: '0.95rem' }}>Score: {analysisData.grammar_metrics.score}/10</div>
+                                                                )}
+                                                            </div>
+                                                            {analysisData.grammar_metrics.long_sentences_count !== undefined && (
+                                                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 1rem 0', color: 'var(--accent-primary)' }}>{analysisData.grammar_metrics.long_sentences_count} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>long sentences</span></div>
+                                                            )}
+                                                            {analysisData.grammar_metrics.suggestion && (
+                                                                <div style={{ fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', marginBottom: '0.5rem' }}>{analysisData.grammar_metrics.suggestion}</div>
+                                                            )}
+                                                            {Object.entries(analysisData.grammar_metrics)
+                                                                .filter(([k]) => !['long_sentences_count', 'score', 'suggestion'].includes(k))
+                                                                .map(([k, v]) => (
+                                                                    <div key={k} style={{ marginTop: '0.8rem' }}>
+                                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', fontSize: '0.85rem', marginBottom: '0.2rem' }}>{k.replace(/_/g, ' ').toUpperCase()}:</div>
+                                                                        <div style={{ color: 'var(--text-primary)', fontSize: '0.95rem', opacity: 0.9 }}>
+                                                                            {typeof v === 'string' ? v : (Array.isArray(v) ? v.join(', ') : JSON.stringify(v))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                         </div>
                                                     )}
                                                 </div>

@@ -8,12 +8,30 @@ const AuthForm = ({ onLoginSuccess }) => {
     const [authMethod, setAuthMethod] = useState('initial'); // 'initial', 'signup', 'signin', 'forgot', 'reset'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isInstructor, setIsInstructor] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [resetToken, setResetToken] = useState('');
+
+    const renderError = (msg) => {
+        if (!msg) return null;
+        if (msg.includes('Practiceyourspeech.com/contact')) {
+            const parts = msg.split('Practiceyourspeech.com/contact');
+            return (
+                <span>
+                    {parts[0]}
+                    <a href="https://practiceyourspeech.com/contact" style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 'bold' }} target="_blank" rel="noopener noreferrer">
+                        Practiceyourspeech.com/contact
+                    </a>
+                    {parts[1]}
+                </span>
+            );
+        }
+        return msg;
+    };
 
     // Detect reset link in URL
     React.useEffect(() => {
@@ -37,7 +55,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                 const res = await fetch(`${API_BASE_URL}/google-signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessToken: tokenResponse.access_token })
+                    body: JSON.stringify({ accessToken: tokenResponse.access_token, role: isInstructor ? 'instructor' : 'student' })
                 });
                 const data = await res.json();
                 if (res.ok && onLoginSuccess) {
@@ -62,7 +80,7 @@ const AuthForm = ({ onLoginSuccess }) => {
             const res = await fetch(`${API_BASE_URL}/sign-up`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name })
+                body: JSON.stringify({ email, password, name, role: isInstructor ? 'instructor' : 'student' })
             });
             const data = await res.json();
             if (res.ok) {
@@ -233,6 +251,26 @@ const AuthForm = ({ onLoginSuccess }) => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {error && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{
+                                        color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center',
+                                        padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '0.8rem', marginBottom: '0.5rem'
+                                    }}>
+                                        {renderError(error)}
+                                    </motion.div>
+                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        id="instructor-checkbox-initial" 
+                                        checked={isInstructor} 
+                                        onChange={(e) => { setIsInstructor(e.target.checked); setError(''); }} 
+                                        style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="instructor-checkbox-initial" style={{ fontSize: '0.95rem', cursor: 'pointer', userSelect: 'none', fontWeight: '500' }}>
+                                        Sign up as an Instructor
+                                    </label>
+                                </div>
                                 <button
                                     onClick={() => googleLogin()}
                                     disabled={isLoading}
@@ -263,7 +301,7 @@ const AuthForm = ({ onLoginSuccess }) => {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                                     <button
-                                        onClick={() => setAuthMethod('signin')}
+                                        onClick={() => { setAuthMethod('signin'); setError(''); }}
                                         style={{
                                             width: '80%', padding: '1rem', borderRadius: '1.2rem',
                                             background: '#16a34a', color: 'white',
@@ -286,7 +324,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                                         Log In with Email
                                     </button>
                                     <button
-                                        onClick={() => setAuthMethod('signup')}
+                                        onClick={() => { setAuthMethod('signup'); setError(''); }}
                                         style={{
                                             width: '80%', padding: '1rem', borderRadius: '1.2rem',
                                             background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
@@ -325,7 +363,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                             exit={{ opacity: 0, x: -20 }}
                         >
                             <button
-                                onClick={() => setAuthMethod('initial')}
+                                onClick={() => { setAuthMethod('initial'); setError(''); }}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                                     color: 'var(--text-secondary)', border: 'none',
@@ -406,11 +444,26 @@ const AuthForm = ({ onLoginSuccess }) => {
                                     />
                                 </div>
 
+                                {authMethod === 'signup' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', padding: '0 1rem' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            id="instructor-checkbox" 
+                                            checked={isInstructor} 
+                                            onChange={(e) => { setIsInstructor(e.target.checked); setError(''); }} 
+                                            style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="instructor-checkbox" style={{ fontSize: '0.95rem', cursor: 'pointer', userSelect: 'none' }}>
+                                            Sign up as an Instructor
+                                        </label>
+                                    </div>
+                                )}
+
                                 {authMethod === 'signin' && (
                                     <div style={{ textAlign: 'right', marginTop: '-0.5rem' }}>
                                         <button
                                             type="button"
-                                            onClick={() => setAuthMethod('forgot')}
+                                            onClick={() => { setAuthMethod('forgot'); setError(''); }}
                                             style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.9rem', cursor: 'pointer', fontWeight: '500' }}
                                         >
                                             Forgot Password?
@@ -423,7 +476,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                                         color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center',
                                         padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '0.8rem'
                                     }}>
-                                        {error}
+                                        {renderError(error)}
                                     </motion.div>
                                 )}
 
@@ -456,7 +509,7 @@ const AuthForm = ({ onLoginSuccess }) => {
 
                     {authMethod === 'forgot' && (
                         <motion.div key="forgot" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <button onClick={() => setAuthMethod('signin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', border: 'none', background: 'none', cursor: 'pointer', marginBottom: '2rem', fontSize: '0.95rem', fontWeight: '600' }}>
+                            <button onClick={() => { setAuthMethod('signin'); setError(''); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', border: 'none', background: 'none', cursor: 'pointer', marginBottom: '2rem', fontSize: '0.95rem', fontWeight: '600' }}>
                                 <ArrowLeft size={18} /> Back to Sign In
                             </button>
                             <div style={{ marginBottom: '2.5rem' }}>
@@ -468,7 +521,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                                     <Sparkles style={{ color: 'var(--accent-primary)', marginBottom: '1rem' }} size={40} />
                                     <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Email Sent!</h3>
                                     <p style={{ color: 'var(--text-secondary)' }}>{successMessage}</p>
-                                    <button onClick={() => setAuthMethod('signin')} style={{ marginTop: '1.5rem', padding: '0.8rem 1.5rem', borderRadius: '1rem', background: 'white', color: 'black', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Okay</button>
+                                    <button onClick={() => { setAuthMethod('signin'); setError(''); }} style={{ marginTop: '1.5rem', padding: '0.8rem 1.5rem', borderRadius: '1rem', background: 'white', color: 'black', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Okay</button>
                                 </div>
                             ) : (
                                 <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
@@ -476,7 +529,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                                         <Mail style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} size={20} />
                                         <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="modern-input" style={{ width: '100%', padding: '1.1rem 1rem 1.1rem 3.5rem', borderRadius: '1.2rem', background: 'var(--bg-secondary)', border: '2px solid var(--glass-border)', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }} required />
                                     </div>
-                                    {error && <div style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+                                    {error && <div style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center' }}>{renderError(error)}</div>}
                                     <button type="submit" disabled={isLoading} style={{ width: '80%', padding: '1.2rem', borderRadius: '1.2rem', background: 'var(--accent-gradient)', color: 'white', border: 'none', fontWeight: '800', alignSelf: 'center', cursor: 'pointer' }}>
                                         {isLoading ? <Loader2 size={24} className="spinner" /> : 'Send Reset Link'}
                                     </button>
@@ -496,7 +549,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                                     <Lock style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} size={20} />
                                     <input type="password" placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="modern-input" style={{ width: '100%', padding: '1.1rem 1rem 1.1rem 3.5rem', borderRadius: '1.2rem', background: 'var(--bg-secondary)', border: '2px solid var(--glass-border)', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }} required />
                                 </div>
-                                {error && <div style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+                                {error && <div style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center' }}>{renderError(error)}</div>}
                                 <button type="submit" disabled={isLoading} style={{ width: '80%', padding: '1.2rem', borderRadius: '1.2rem', background: 'var(--accent-gradient)', color: 'white', border: 'none', fontWeight: '800', alignSelf: 'center', cursor: 'pointer' }}>
                                     {isLoading ? <Loader2 size={24} className="spinner" /> : 'Confirm New Password'}
                                 </button>

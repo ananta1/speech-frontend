@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown, MessageSquare } from 'lucide-react';
+import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown, MessageSquare, BookOpen, Trophy, RefreshCw } from 'lucide-react';
 
 const GeometricBackground = ({ activeTab }) => {
   const randomizeShape = (shape) => ({
@@ -111,6 +111,7 @@ import SpeechInputWrapper from './components/SpeechInputWrapper';
 import Profile from './components/Profile';
 import CheckoutForm from './components/CheckoutForm';
 import ClassSetup from './components/ClassSetup';
+import CompetitionSetup from './components/CompetitionSetup';
 import AdminTools from './components/AdminTools';
 import FAQ from './components/FAQ';
 import Contact from './components/Contact';
@@ -120,6 +121,41 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+
+const transitionVariants = [
+  { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+];
+
+const HOME_IMAGES = [
+  '/speaker_img_1_1774830808362.png',
+  '/speaker_img_2_1774830822451.png',
+  '/speaker_img_3_1774830836176.png',
+  '/speaker_img_4_1774830850424.png',
+  '/speaker_img_5_1774830870298.png',
+  '/speaker_img_6_1774830883075.png',
+  '/speaker_img_7_1774830896800.png',
+  '/speaker_img_8_1774830918314.png',
+  '/speaker_img_10_1774830933162.png',
+  '/home_popup.png'
+];
+
+const ADVANCED_FEATURES = [
+  { title: 'Class Management', desc: 'Instructors can setup Class for students with specialized criteria and goals', icon: Users, tint: '#ff0000' },
+  { title: 'Instructor Signup', desc: <>Instructors, please contact us at <a href="https://practiceyourspeech.com/contact" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }} onMouseOver={(e) => e.target.style.textDecoration = 'underline'} onMouseOut={(e) => e.target.style.textDecoration = 'none'}>https://practiceyourspeech.com/contact</a> if you want to signup as Instructor and use our platform to supplement your speech classes.</>, icon: Mail, tint: '#00a2ff' },
+  { title: 'Emotional Intelligence', desc: 'Our Speech Analysis Engine maps eyes, mouth, and brow movements to detect subtle sentiment shifts.', icon: Sparkles, tint: '#00d644' },
+  { title: 'Delivery Dynamics', desc: 'Real-time WPM (Words Per Minute) tracking and meaningful pause analysis for better rhythm.', icon: Zap, tint: '#ffcc00' },
+  { title: 'Instant Transcription', desc: 'High-fidelity speech-to-text processing that captures every nuance of your delivery for review and improvement.', icon: Video, tint: '#000000' },
+  { title: 'Content Evolution', desc: 'Compare your intro, body, and conclusion scores to see where your structure needs punch.', icon: BarChart2, tint: '#ff6600' },
+  { title: 'Visual Confidence', desc: 'Deep posture and eye-contact analysis to ensure you hold the room with professional poise.', icon: Target, tint: '#aa00ff' },
+  { title: 'Filler Elimination', desc: 'Automated detection of "um", "ah", and "like" patterns with strategy-based coaching.', icon: Mic, tint: '#ff0000' },
+  { title: 'Vocabulary Builder', desc: 'AI suggestions to replace repetitive words with sophisticated, high-impact alternatives.', icon: Palette, tint: '#00a2ff' },
+  { title: 'Rhetorical Analysis', desc: 'AI identifies metaphors, triadic structures, and parallelism to elevate your sophisticated word choice.', icon: Zap, tint: '#00d644' },
+  { title: 'Grammar & Breath-ability', desc: 'Deep syntax analysis identifies run-on sentences that hinder your vocal clarity and audience retention.', icon: Check, tint: '#ffcc00' },
+  { title: 'Competition Management', desc: 'Instructors can setup Competition for students with specialized criteria and goals', icon: Users, tint: '#000000' },
+  { title: 'Progress Tracking', desc: 'Interactive charts track your improvement across pacing, confidence, and structure over time.', icon: LineChart, tint: '#ff6600' },
+  { title: 'Security & Privacy', desc: 'Your privacy is our priority. No one can access your videos or reports except youyour instructor in case you are part of a class or competition.', icon: Home, tint: '#aa00ff' },
+  { title: 'Actionable Improv', desc: 'Receive "Rewritten Passages" suggestions that transform your rough drafts into world-class scripts.', icon: Zap, tint: '#ff0000' }
+];
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -134,6 +170,22 @@ const App = () => {
   const [hoveredItem, setHoveredItem] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [barColor, setBarColor] = useState('#ef4444');
+  const [currentHomeImageIdx, setCurrentHomeImageIdx] = useState(0);
+  const [featureSlide, setFeatureSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFeatureSlide(prev => (prev + 1) % ADVANCED_FEATURES.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHomeImageIdx(prev => (prev + 1) % HOME_IMAGES.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleUpdate = () => setDemoTick(t => t + 1);
@@ -185,6 +237,10 @@ const App = () => {
       setActiveTab('contact');
     } else if (path === '/class-setup') {
       setActiveTab(isUserLoggedIn ? 'class-setup' : 'signup');
+    } else if (path === '/instructor-tools') {
+      setActiveTab(isUserLoggedIn ? 'instructor-tools' : 'signup');
+    } else if (path === '/competition-setup') {
+      setActiveTab(isUserLoggedIn ? 'competition-setup' : 'signup');
     } else if (path === '/admin-tools') {
       setActiveTab(isUserLoggedIn ? 'admin-tools' : 'signup');
     } else if (path === '/signup' || path === '/login') {
@@ -402,10 +458,18 @@ const App = () => {
     { id: 'home', label: 'Home', icon: Home },
     ...(isAuthenticated
       ? [
-        ...(user?.role === 'instructor' ? [{ id: 'class-setup', label: 'Class Setup', icon: Settings }] : []),
+        ...(user?.role === 'instructor' || user?.role === 'super_admin' ? [{
+          id: 'instructor-tools',
+          label: 'Instructor',
+          icon: BookOpen,
+          subItems: [
+            { id: 'class-setup', label: 'Class Setup', icon: Settings },
+            { id: 'competition-setup', label: 'Competition', icon: Trophy }
+          ]
+        }] : []),
         ...(user?.role === 'super_admin' ? [{
           id: 'admin-tools',
-          label: 'Admin Tools',
+          label: 'Admin',
           icon: ShieldCheck,
           subItems: [
             { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
@@ -473,8 +537,11 @@ const App = () => {
           setUser(userData);
           setActiveTab('home');
         }} />;
+      case 'instructor-tools':
       case 'class-setup':
         return <ClassSetup user={user} />;
+      case 'competition-setup':
+        return <CompetitionSetup user={user} />;
       case 'admin-tools':
       case 'setup-instructor':
       case 'master-evaluation':
@@ -493,17 +560,12 @@ const App = () => {
           <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '3rem', paddingBottom: '5rem' }}>
 
             {/* HER0 SECTION */}
+            {/* HERO DASHBOARD SECTION */}
             <div className="glass-panel" style={{
-              width: '100%',
-              zIndex: 1,
-              padding: '2.5rem 2rem',
-              textAlign: 'center',
-              borderRadius: '2rem',
-              background: 'var(--glass)',
-              border: '1px solid var(--glass-border)',
-              position: 'relative',
-              overflow: 'visible',
-              flexShrink: 0
+              width: '100%', zIndex: 1, padding: '2.5rem', borderRadius: '2rem',
+              background: 'var(--glass)', border: '1px solid var(--glass-border)',
+              position: 'relative', overflow: 'visible', textAlign: 'left',
+              display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '3rem', alignItems: 'center'
             }}>
               {/* Decorative background glow */}
               <div style={{
@@ -512,91 +574,138 @@ const App = () => {
                 filter: 'blur(120px)', opacity: 0.1, pointerEvents: 'none'
               }} />
 
-              <h1 style={{
-                fontSize: 'clamp(2rem, 5vw, 3.5rem)', marginBottom: '1rem',
-                letterSpacing: '-2px', lineHeight: '1.1', fontWeight: '900', color: 'var(--text-primary)'
-              }}>
-                Master the Art of <br />
-                <span className="gradient-text">Public Speaking</span>
-              </h1>
-
-              <p style={{
-                color: 'var(--text-secondary)', fontSize: '1.25rem', lineHeight: '1.6',
-                marginBottom: '3rem', maxWidth: '700px', marginInline: 'auto', fontWeight: '400'
-              }}>
-                Join thousands of professionals using <strong style={{ color: 'var(--text-primary)' }}>Practice Your Speech</strong> to conquer stage fright and deliver high-impact presentations with real-time AI feedback.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', position: 'relative' }}>
-                {[
-                  { icon: Video, title: '1. Record', desc: 'Securely upload your video or record live' },
-                  { icon: Zap, title: '2. Transcribe', desc: 'High-accuracy speech-to-text processing' },
-                  { icon: Sparkles, title: '3. Smart Insight', desc: 'Instant Analysis' },
-                  { icon: BarChart2, title: '4. Metrics', desc: 'Get WPM, fillers, and sentiment data' },
-                  { icon: Check, title: '5. Refine', desc: 'Apply feedback and master your speech' }
-                ].map((step, i) => (
-                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                      width: '56px', height: '56px', borderRadius: '1rem',
-                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--accent-primary)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.1)'
-                    }}>
-                      <step.icon size={24} />
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <h4 style={{ margin: '0 0 0.15rem 0', fontWeight: '700', fontSize: '1rem' }}>{step.title}</h4>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.3' }}>{step.desc}</p>
-                    </div>
-                  </div>
-                ))}
+              {/* Column 1: Hero */}
+              <div style={{ flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'flex-start' }}>
+                <div style={{ position: 'relative', width: 'clamp(120px, 15vw, 160px)', height: 'clamp(120px, 15vw, 160px)', flexShrink: 0 }}>
+                  <AnimatePresence mode="popLayout">
+                    <motion.img
+                      key={currentHomeImageIdx}
+                      src={HOME_IMAGES[currentHomeImageIdx]}
+                      alt="Speaking Motivation"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 2.5, ease: "easeInOut" }}
+                      style={{
+                        position: 'absolute',
+                        top: 0, left: 0,
+                        width: '100%', height: '100%',
+                        borderRadius: '1rem',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.2), 0 0 15px rgba(56, 189, 248, 0.2)',
+                        border: '2px solid rgba(56, 189, 248, 0.3)',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </AnimatePresence>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <h1 style={{
+                    fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', margin: '0 0 0.5rem 0',
+                    letterSpacing: '-1px', lineHeight: '1.1', fontWeight: '900', color: 'var(--text-primary)',
+                    textAlign: 'left'
+                  }}>
+                    Master the Art of <br />
+                    <span className="gradient-text">Public Speaking</span>
+                  </h1>
+                  <p style={{
+                    color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5',
+                    margin: 0, fontWeight: '400', textAlign: 'left'
+                  }}>
+                    Join thousands of professionals using <strong style={{ color: 'var(--text-primary)' }}>Practice Your Speech</strong> to conquer stage fright and deliver high-impact presentations with real-time AI feedback.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* ADVANCED CAPABILITIES SECTION */}
-            <div className="glass-panel" style={{
-              width: '100%', zIndex: 1, padding: '3.5rem 2.5rem', borderRadius: '2rem',
-              background: 'var(--glass)', border: '1px solid var(--glass-border)',
-              position: 'relative', overflow: 'visible', textAlign: 'left'
-            }}>
-              <h2 style={{ fontSize: '2.5rem', marginBottom: '3rem', fontWeight: '800', textAlign: 'center', letterSpacing: '-1px' }}>
-                Advanced <span className="gradient-text">Capabilities</span>
-              </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-                {[
-                  { title: 'Emotional Intelligence', desc: 'Our Speech Analysis Engine maps eyes, mouth, and brow movements to detect subtle sentiment shifts.', icon: Sparkles, tint: '#a855f7' },
-                  { title: 'Delivery Dynamics', desc: 'Real-time WPM (Words Per Minute) tracking and meaningful pause analysis for better rhythm.', icon: Zap, tint: '#0ea5e9' },
-                  { title: 'Instant Transcription', desc: 'High-fidelity speech-to-text processing that captures every nuance of your delivery for audit.', icon: Video, tint: '#10b981' },
-                  { title: 'Content Evolution', desc: 'Compare your intro, body, and conclusion scores to see where your structure needs punch.', icon: BarChart2, tint: '#f59e0b' },
-                  { title: 'Visual Confidence', desc: 'Deep posture and eye-contact analysis to ensure you hold the room with professional poise.', icon: Target, tint: '#ec4899' },
-                  { title: 'Filler Elimination', desc: 'Automated detection of "um", "ah", and "like" patterns with strategy-based coaching.', icon: Mic, tint: '#6366f1' },
-                  { title: 'Vocabulary Builder', desc: 'AI suggestions to replace repetitive words with sophisticated, high-impact alternatives.', icon: Palette, tint: '#f43f5e' },
-                  { title: 'Rhetorical Analysis', desc: 'AI identifies metaphors, triadic structures, and parallelism to elevate your sophisticated word choice.', icon: Zap, tint: '#06b6d4' },
-                  { title: 'Grammar & Breath-ability', desc: 'Deep syntax analysis identifies run-on sentences that hinder your vocal clarity and audience retention.', icon: Check, tint: '#8b5cf6' },
-                  { title: 'Progress Tracking', desc: 'Interactive charts track your improvement across pacing, confidence, and structure over time.', icon: LineChart, tint: '#10b981' },
-                  { title: 'Secure Privacy', desc: 'Enterprise-grade encryption ensures your practice videos and reports are for your eyes only.', icon: Home, tint: '#64748b' },
-                  { title: 'Actionable Improv', desc: 'Receive "Rewritten Passages" suggestions that transform your rough drafts into world-class scripts.', icon: Zap, tint: '#f43f5e' }
-                ].map((feature, idx) => (
-                  <div key={idx} style={{
-                    padding: '2rem',
-                    background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, ${feature.tint}08 100%)`,
-                    borderRadius: '1.5rem', border: `1px solid ${feature.tint}20`,
-                    transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden'
-                  }} className="feature-card">
-                    <div style={{
-                      position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px',
-                      background: feature.tint, filter: 'blur(50px)', opacity: 0.15
-                    }} />
-                    <div style={{ color: feature.tint, marginBottom: '1rem' }}><feature.icon size={32} /></div>
-                    <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: '700' }}>{feature.title}</h3>
-                    <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{feature.desc}</p>
-                  </div>
-                ))}
+              {/* Left Column: Workflow */}
+              <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>How It Works</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {[
+                    { icon: Video, title: '1. Record', desc: 'Securely record or upload your speech' },
+                    { icon: Sparkles, title: '2. Analyze', desc: 'Your speech will go for AI analysis' },
+                    { icon: BarChart2, title: '3. Review Analysis', desc: 'AI insights and Evaluation' },
+                    { icon: Settings, title: '4. Refine', desc: 'Refine the transcribed speech' },
+                    { icon: RefreshCw, title: '5. Repeat', desc: 'Repeat the process to master your speech' }
+                  ].map((step, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{
+                        width: '48px', height: '48px', borderRadius: '1rem', flexShrink: 0,
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--accent-primary)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.1)'
+                      }}>
+                        <step.icon size={20} />
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem' }}>{step.title}</h4>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{step.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Column: Slideshow */}
+              <div style={{ flex: '1 1 350px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AnimatePresence>
+                    {ADVANCED_FEATURES.map((feature, idx) => idx === featureSlide && (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 2.0, ease: "easeInOut" }}
+                        style={{
+                          position: 'absolute',
+                          width: '100%',
+                          maxWidth: '700px',
+                          padding: '3rem',
+                          background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, ${feature.tint}10 100%)`,
+                          borderRadius: '2rem', border: `1px solid ${feature.tint}30`,
+                          boxShadow: `0 20px 40px -10px ${feature.tint}15`,
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{
+                          width: '90px', height: '90px', margin: '0 auto 1.5rem auto',
+                          background: `${feature.tint}15`, borderRadius: '50%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: feature.tint, boxShadow: `inset 0 0 20px ${feature.tint}20`
+                        }}>
+                          <feature.icon size={48} />
+                        </div>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: '800' }}>{feature.title}</h3>
+                        <p style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{feature.desc}</p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {/* Slider Dots */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '2.5rem' }}>
+                  {ADVANCED_FEATURES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setFeatureSlide(idx)}
+                      style={{
+                        width: idx === featureSlide ? '32px' : '10px',
+                        height: '10px',
+                        borderRadius: '5px',
+                        background: idx === featureSlide ? 'var(--accent-primary)' : 'var(--glass-border)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* CTA SECTION */}
-            <div style={{ width: '100%', padding: '2rem 0', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
+            <div style={{ width: '100%', padding: '0 0 2rem 0', marginTop: '-1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
               <button
                 onClick={() => setActiveTab(isAuthenticated ? 'practice' : 'signup')}
                 style={{
@@ -615,11 +724,7 @@ const App = () => {
               >
                 {isAuthenticated ? 'Start Analyzing Your Speech' : 'Create Free Account'}
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                <Check size={16} color="var(--success)" /> 5 evaluations included free
-                <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
-                <Check size={16} color="var(--success)" /> No installation required
-              </div>
+
             </div>
           </div>
         );
@@ -957,21 +1062,26 @@ const App = () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'rgba(15, 23, 42, 0.2)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid var(--glass-border)',
+        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3) 0%, rgba(99, 166, 240, 0.25) 35%, rgba(129, 140, 248, 0.25) 65%, rgba(168, 85, 247, 0.3) 100%)',
+        backdropFilter: 'blur(14px)',
+        borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
         zIndex: 50
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{
-            padding: '0.5rem',
-            background: 'var(--accent-gradient)',
-            borderRadius: '0.75rem',
-            color: '#fff',
-            boxShadow: 'var(--shadow-glow)'
-          }}>
-            <Mic size={24} strokeWidth={2.5} />
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <motion.div
+            whileHover={{ scale: 5, zIndex: 9999, transition: { type: 'spring', bounce: 0.5, duration: 0.6 } }}
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '1rem',
+              boxShadow: 'var(--shadow-glow)',
+              overflow: 'hidden',
+              flexShrink: 0,
+              cursor: 'zoom-in',
+              transformOrigin: 'top left'
+            }}>
+            <img src="/speaker_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </motion.div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <h1 style={{
               margin: 0,
@@ -1005,7 +1115,8 @@ const App = () => {
               fontSize: '0.75rem',
               color: 'var(--text-secondary)',
               letterSpacing: '0.5px',
-              fontWeight: 500
+              fontWeight: 500,
+              marginTop: '0.25rem'
             }}>
               {isAuthenticated ? 'Take your speaking skills to next level' : 'Take your speech to the next level'}
             </span>
@@ -1018,6 +1129,8 @@ const App = () => {
               <div
                 key={item.id}
                 style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
               >
                 <button
                   onClick={() => {
@@ -1058,6 +1171,8 @@ const App = () => {
                     />
                   )}
                 </button>
+
+                {/* Home Motivational Pop-up Image removed as requested */}
 
                 {/* Vertical Stacked Dropdown - Click Activated */}
                 {openMenu === item.id && item.subItems && (
@@ -1115,28 +1230,7 @@ const App = () => {
 
           <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)', margin: '0 0.5rem' }}></div>
 
-          {/* User Profile Hook */}
-          {isAuthenticated && (
-            <button
-              onClick={() => setActiveTab('profile')}
-              style={{
-                padding: '0.6rem 1.2rem',
-                borderRadius: '0.75rem',
-                color: activeTab === 'profile' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: activeTab === 'profile' ? 'var(--glass)' : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontWeight: activeTab === 'profile' ? '600' : '400',
-                transition: 'all 0.3s ease',
-                border: activeTab === 'profile' ? '1px solid var(--glass-border)' : '1px solid transparent'
-              }}
-              title="Profile"
-            >
-              <User size={18} />
-              Profile
-            </button>
-          )}
+          {/* Profile is now accessed via the "Welcome, {user.name}" hyperlink in the header */}
 
           {/* Theme Toggle Button Hidden (requested by user) */}
           {/* 

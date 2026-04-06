@@ -8,12 +8,11 @@ const CameraView = ({ user, onUploadSuccess }) => {
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
     const [stream, setStream] = useState(null);
-    const [mode, setMode] = useState('video');
     const [capturedImage, setCapturedImage] = useState(null);
     const [recordedChunks, setRecordedChunks] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
     const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
-    const [recordingMimeType, setRecordingMimeType] = useState('video/webm'); // Default
+    const [recordingMimeType, setRecordingMimeType] = useState('video/webm');
     const mediaRecorderRef = useRef(null);
     const recordingTimeoutRef = useRef(null);
     const [error, setError] = useState(null);
@@ -35,9 +34,10 @@ const CameraView = ({ user, onUploadSuccess }) => {
 
     useEffect(() => {
         let isMounted = true;
-
+        
         const initCamera = async () => {
             try {
+                // Fully reverted to standard clean camera start
                 const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
                 if (!isMounted) {
@@ -107,15 +107,12 @@ const CameraView = ({ user, onUploadSuccess }) => {
         if (stream) {
             setRecordedChunks([]);
 
-            // Feature detect MP4 support (better for Rekognition)
             let mimeType = 'video/webm';
             if (MediaRecorder.isTypeSupported('video/mp4')) {
                 mimeType = 'video/mp4';
             } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
                 mimeType = 'video/webm;codecs=vp9';
             }
-            // If mp4 not supported, we fall back to webm. Rekognition might fail on webm.
-            // Future improvement: Server-side conversion using FFMPEG.
 
             setRecordingMimeType(mimeType);
             console.log(`Recording with mimeType: ${mimeType}`);
@@ -133,7 +130,6 @@ const CameraView = ({ user, onUploadSuccess }) => {
             setRecordingTime(0);
             setIsRecording(true);
 
-            // Auto stop after 10 mins (600000 ms)
             if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
             recordingTimeoutRef.current = setTimeout(() => {
                 if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -145,7 +141,6 @@ const CameraView = ({ user, onUploadSuccess }) => {
         }
     }, [stream]);
 
-    // Effect to create URL when recording stops
     useEffect(() => {
         if (!isRecording && recordedChunks.length > 0) {
             const blob = new Blob(recordedChunks, { type: recordingMimeType });
@@ -161,15 +156,6 @@ const CameraView = ({ user, onUploadSuccess }) => {
             setIsRecording(false);
         }
     }, [isRecording]);
-
-    const handleDownload = (url, filename) => {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    };
 
     const resetCapture = () => {
         setCapturedImage(null);
@@ -194,17 +180,14 @@ const CameraView = ({ user, onUploadSuccess }) => {
         setIsUploading(true);
         try {
             const blob = new Blob(recordedChunks, { type: recordingMimeType });
-
-            // Determines extension based on mimeType
             const ext = recordingMimeType.includes('mp4') ? '.mp4' : '.webm';
             const fileNameWithExt = uploadName.endsWith(ext) ? uploadName : `${uploadName}${ext}`;
 
-            // 1. Get Presigned URL
             const res = await fetch(`${API_BASE_URL}/get-upload-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id,
+                    userId: user.id || user.userId,
                     email: user.email,
                     fileName: fileNameWithExt,
                     fileType: recordingMimeType
@@ -218,7 +201,6 @@ const CameraView = ({ user, onUploadSuccess }) => {
 
             const { uploadUrl } = await res.json();
 
-            // 2. Upload to S3
             const uploadRes = await fetch(uploadUrl, {
                 method: 'PUT',
                 body: blob,
@@ -246,7 +228,6 @@ const CameraView = ({ user, onUploadSuccess }) => {
             display: 'flex', flexDirection: 'column', width: '100%', height: '100%',
             alignItems: 'center', justifyContent: 'center', position: 'relative'
         }}>
-
 
             <div className="glass-panel" style={{
                 position: 'relative', width: '90%', maxWidth: '800px', height: '60%', minHeight: '400px',
@@ -290,21 +271,11 @@ const CameraView = ({ user, onUploadSuccess }) => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
                             style={{
-                                position: 'absolute',
-                                top: '24px',
-                                right: '24px',
-                                zIndex: 10000,
-                                background: '#ef4444',
-                                color: 'white',
-                                padding: '10px 20px',
-                                borderRadius: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                boxShadow: '0 10px 30px rgba(239, 68, 68, 0.5)',
-                                pointerEvents: 'none',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                fontWeight: '700'
+                                position: 'absolute', top: '24px', right: '24px', zIndex: 10000,
+                                background: '#22c55e', color: 'white', padding: '10px 20px', borderRadius: '12px',
+                                display: 'flex', alignItems: 'center', gap: '12px',
+                                boxShadow: '0 10px 30px rgba(34, 197, 94, 0.5)', pointerEvents: 'none',
+                                border: '2px solid rgba(255, 255, 255, 0.3)', fontWeight: '700'
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -323,62 +294,61 @@ const CameraView = ({ user, onUploadSuccess }) => {
                     )}
                 </AnimatePresence>
 
+                <div className="glass-panel" style={{
+                    position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+                    padding: '0.5rem 1.5rem', borderRadius: '9999px',
+                    display: 'flex', gap: '1.5rem', alignItems: 'center', zIndex: 50,
+                    background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    {(capturedImage || recordedVideoUrl) ? (
+                        <>
+                            <button onClick={resetCapture} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+                                <div style={{ padding: '0.6rem', background: 'rgba(255,255,255,0.2)', borderRadius: '50%', color: 'white' }}>
+                                    <RefreshCcw size={20} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem' }}>Retake</span>
+                            </button>
+
+                            <button
+                                onClick={handleUploadClick}
+                                disabled={isUploading}
+                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: isUploading ? 0.5 : 1 }}
+                            >
+                                <div style={{ padding: '0.6rem', background: 'var(--accent-gradient)', borderRadius: '50%', color: 'white' }}>
+                                    <UploadCloud size={20} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem' }}>Upload</span>
+                            </button>
+                        </>
+                    ) : (
+                        <div style={{ position: 'relative', height: '48px', width: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                style={{
+                                    width: '100%', height: '100%', borderRadius: '50%',
+                                    border: '3px solid white', padding: '3px',
+                                    background: 'transparent', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}
+                            >
+                                <div style={{
+                                    width: '100%', height: '100%',
+                                    borderRadius: isRecording ? '0.3rem' : '50%',
+                                    background: isRecording ? '#22c55e' : '#ef4444',
+                                    transition: 'all 0.3s ease',
+                                    transform: isRecording ? 'scale(0.5)' : 'scale(1)',
+                                }} />
+                            </motion.button>
+                        </div>
+                    )}
+                </div>
+
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
 
-            <div style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            <div style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic', zIndex: 1 }}>
                 Please limit speech duration to 10 minutes.
-            </div>
-
-            <div className="glass-panel" style={{
-                marginTop: '1rem', padding: '1rem 2rem', borderRadius: '9999px',
-                display: 'flex', gap: '2rem', alignItems: 'center'
-            }}>
-                {(capturedImage || recordedVideoUrl) ? (
-                    <>
-                        <button onClick={resetCapture} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
-                            <div style={{ padding: '0.8rem', background: 'var(--bg-secondary)', borderRadius: '50%', color: 'var(--text-secondary)' }}>
-                                <RefreshCcw size={24} />
-                            </div>
-                            <span style={{ fontSize: '0.8rem' }}>Retake</span>
-                        </button>
-
-                        <button
-                            onClick={handleUploadClick}
-                            disabled={isUploading}
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: isUploading ? 0.5 : 1 }}
-                        >
-                            <div style={{ padding: '0.8rem', background: 'var(--accent-gradient)', borderRadius: '50%', color: 'white' }}>
-                                <UploadCloud size={24} />
-                            </div>
-                            <span style={{ fontSize: '0.8rem' }}>Upload</span>
-                        </button>
-                    </>
-                ) : (
-                    <div style={{ position: 'relative', height: '60px', width: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={isRecording ? handleStopRecording : handleStartRecording}
-                            style={{
-                                width: '100%', height: '100%', borderRadius: '50%',
-                                border: '4px solid var(--text-primary)', padding: '4px',
-                                background: 'transparent', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}
-                        >
-                            <div style={{
-                                width: '100%', height: '100%', borderRadius: '50%',
-                                background: isRecording ? 'var(--danger)' : 'var(--text-primary)',
-                                transition: 'all 0.3s ease',
-                                transform: isRecording ? 'scale(0.5)' : 'scale(1)',
-                                borderRadius: isRecording ? '12px' : '50%'
-                            }} />
-                        </motion.button>
-                        <div style={{ position: 'absolute', bottom: '-2.5rem', width: '150px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                            {isRecording ? 'Tap to Stop' : 'Tap to Record'}
-                        </div>
-                    </div>
-                )}
             </div>
 
             <AnimatePresence>
@@ -453,4 +423,4 @@ const CameraView = ({ user, onUploadSuccess }) => {
     );
 };
 
-export default CameraView;
+export default CameraView;

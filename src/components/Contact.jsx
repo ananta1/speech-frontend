@@ -74,7 +74,7 @@ const Contact = () => {
                                 outline: 'none',
                                 boxSizing: 'border-box'
                             }}
-                            placeholder="name@example.com"
+                            placeholder=""
                         />
                     </div>
 
@@ -96,7 +96,7 @@ const Contact = () => {
                                 outline: 'none',
                                 boxSizing: 'border-box'
                             }}
-                            placeholder="What is this about?"
+                            placeholder=""
                         />
                     </div>
 
@@ -119,7 +119,7 @@ const Contact = () => {
                                 resize: 'none',
                                 boxSizing: 'border-box'
                             }}
-                            placeholder="How can we help you?"
+                            placeholder=""
                         />
                     </div>
 
