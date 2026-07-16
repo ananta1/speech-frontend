@@ -115,6 +115,7 @@ import CompetitionSetup from './components/CompetitionSetup';
 import AdminTools from './components/AdminTools';
 import FAQ from './components/FAQ';
 import Contact from './components/Contact';
+import Chatbot from './components/Chatbot';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL, STRIPE_PUBLISHABLE_KEY } from './config';
 import { loadStripe } from '@stripe/stripe-js';
@@ -172,6 +173,11 @@ const App = () => {
   const [barColor, setBarColor] = useState('#ef4444');
   const [currentHomeImageIdx, setCurrentHomeImageIdx] = useState(0);
   const [featureSlide, setFeatureSlide] = useState(0);
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'red');
+
+  useEffect(() => {
+    localStorage.setItem('accentColor', accentColor);
+  }, [accentColor]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -284,9 +290,8 @@ const App = () => {
 
   // Sync Tab to URL + Change Bar Color
   useEffect(() => {
-    // Select Random Color for Sidebar
-    const sideColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#06b6d4', '#f97316', '#a16207', '#6b7280'];
-    setBarColor(sideColors[Math.floor(Math.random() * sideColors.length)]);
+    // Keep sidebar color red all the time
+    setBarColor('#ef4444');
 
     if (activeTab === 'home') {
       if (window.location.pathname !== '/' && window.location.pathname !== '/payment-success') {
@@ -305,7 +310,10 @@ const App = () => {
     if (currentTheme !== 'midnight') {
       document.body.classList.add(`theme-${currentTheme}`);
     }
-  }, [currentTheme]);
+    if (accentColor === 'grey') {
+      document.body.classList.add('accent-grey');
+    }
+  }, [currentTheme, accentColor]);
 
   // Handle Payment Success Redirect
   useEffect(() => {
@@ -485,8 +493,6 @@ const App = () => {
       : [{ id: 'signup', label: 'Sign In', icon: LogIn }]
     ),
     ...(user?.role !== 'student' ? [{ id: 'price-plan', label: 'Price Plan', icon: Check }] : []),
-    { id: 'faq', label: 'FAQ', icon: HelpCircle },
-    { id: 'contact', label: 'Contact Us', icon: Mail },
     ...(isAuthenticated ? [{ id: 'logout', label: '', icon: LogOut, tooltip: 'Logout' }] : []),
   ];
 
@@ -605,7 +611,7 @@ const App = () => {
                     textAlign: 'left'
                   }}>
                     Master the Art of <br />
-                    <span className="gradient-text">Public Speaking</span>
+                    <span style={{ color: 'red' }}>Public Speaking</span>
                   </h1>
                   <p style={{
                     color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5',
@@ -618,7 +624,7 @@ const App = () => {
 
               {/* Left Column: Workflow */}
               <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>How It Works</h3>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', color: 'red' }}>How It Works</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {[
                     { icon: Video, title: '1. Record', desc: 'Securely record or upload your speech' },
@@ -675,7 +681,7 @@ const App = () => {
                         }}>
                           <feature.icon size={48} />
                         </div>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: '800' }}>{feature.title}</h3>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '2rem', fontWeight: '800', color: 'red' }}>{feature.title}</h3>
                         <p style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{feature.desc}</p>
                       </motion.div>
                     ))}
@@ -1067,6 +1073,7 @@ const App = () => {
         borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
         zIndex: 50
       }}>
+        {/* Left container: Brand Logo and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <motion.div
             whileHover={{ scale: 5, zIndex: 9999, transition: { type: 'spring', bounce: 0.5, duration: 0.6 } }}
@@ -1092,10 +1099,11 @@ const App = () => {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              Practice Your <span style={{ color: 'var(--accent-primary)', WebkitTextFillColor: 'initial' }}>Speech</span>
+              Practice Your <span style={{ color: 'red', WebkitTextFillColor: 'initial' }}>Speech</span>
             </h1>
             {isAuthenticated && user?.name && (
               <button
+                className="welcome-btn"
                 onClick={() => setActiveTab('profile')}
                 style={{
                   fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '0.25rem',
@@ -1123,8 +1131,9 @@ const App = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <nav style={{ display: 'flex', gap: '0.5rem' }}>
+        {/* Right container: Navigation Menu and Accent Color Switch */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <nav style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {menuItems.map((item) => (
               <div
                 key={item.id}
@@ -1133,6 +1142,7 @@ const App = () => {
                 onMouseLeave={() => setHoveredItem(null)}
               >
                 <button
+                  className={(activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'nav-btn active' : 'nav-btn'}
                   onClick={() => {
                     if (item.id === 'logout') {
                       handleLogout();
@@ -1144,7 +1154,7 @@ const App = () => {
                     }
                   }}
                   style={{
-                    padding: '0.6rem 1.2rem',
+                    padding: '0.5rem 0.9rem',
                     borderRadius: '0.75rem',
                     color: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--text-primary)' : 'var(--text-secondary)',
                     background: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--glass)' : 'transparent',
@@ -1171,8 +1181,6 @@ const App = () => {
                     />
                   )}
                 </button>
-
-                {/* Home Motivational Pop-up Image removed as requested */}
 
                 {/* Vertical Stacked Dropdown - Click Activated */}
                 {openMenu === item.id && item.subItems && (
@@ -1228,26 +1236,37 @@ const App = () => {
             ))}
           </nav>
 
-          <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)', margin: '0 0.5rem' }}></div>
-
-          {/* Profile is now accessed via the "Welcome, {user.name}" hyperlink in the header */}
-
-          {/* Theme Toggle Button Hidden (requested by user) */}
-          {/* 
           <button
-            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            className="welcome-btn"
+            onClick={() => setAccentColor(accentColor === 'red' ? 'grey' : 'red')}
             style={{
-              padding: '0.6rem',
-              borderRadius: '0.75rem',
-              color: 'var(--text-secondary)',
-              background: showThemeMenu ? 'var(--glass)' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              width: '50px',
+              height: '26px',
+              borderRadius: '13px',
+              background: accentColor === 'red' ? 'red' : '#6b7280',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background-color 0.3s ease',
+              padding: 0,
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
             }}
-            title="Change Theme"
+            title={`Accent Color: ${accentColor === 'red' ? 'Red' : 'Grey'}`}
           >
-            <Palette size={20} />
+            <div style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'white',
+              position: 'absolute',
+              top: '3px',
+              left: accentColor === 'red' ? '27px' : '3px',
+              transition: 'left 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }} />
           </button>
-          */}
         </div>
       </header>
 
@@ -1279,6 +1298,61 @@ const App = () => {
         </AnimatePresence>
       </main>
 
+      <footer style={{
+        padding: '1rem 2rem',
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '2.5rem',
+        background: 'var(--bg-primary)',
+        borderTop: '1px solid var(--glass-border)',
+        zIndex: 50
+      }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+          © {new Date().getFullYear()} Practice Your Speech. All rights reserved.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
+          <button
+            className={(activeTab === 'faq') ? 'nav-btn active' : 'nav-btn'}
+            onClick={() => setActiveTab('faq')}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              color: activeTab === 'faq' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              background: activeTab === 'faq' ? 'var(--glass)' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontWeight: activeTab === 'faq' ? '600' : '400',
+              fontSize: '0.85rem'
+            }}
+          >
+            <HelpCircle size={16} />
+            FAQ
+          </button>
+          <button
+            className={(activeTab === 'contact') ? 'nav-btn active' : 'nav-btn'}
+            onClick={() => setActiveTab('contact')}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              color: activeTab === 'contact' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              background: activeTab === 'contact' ? 'var(--glass)' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontWeight: activeTab === 'contact' ? '600' : '400',
+              fontSize: '0.85rem'
+            }}
+          >
+            <Mail size={16} />
+            Contact Us
+          </button>
+        </div>
+      </footer>
+
       {/* Payment Modal */}
       {clientSecret && (
         <div style={{
@@ -1305,6 +1379,9 @@ const App = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Support Chatbot */}
+      <Chatbot onNavigateToContact={() => setActiveTab('contact')} />
     </div>
   );
 };
