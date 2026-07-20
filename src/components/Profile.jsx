@@ -305,8 +305,8 @@ const Profile = ({ user, refreshAppProfile }) => {
                 </div>
             )}
 
-            {/* Subscription Details — hidden for class-enrolled students */}
-            {!(user.role === 'student' && (profile?.user?.classId || user.classId)) && (
+            {/* Subscription Details — hidden for class-enrolled students unless they have an active Pro subscription */}
+            {(!(user.role === 'student' && (profile?.user?.classId || user.classId)) || isActive) && (
                 <div className="glass-panel" style={{ padding: '2rem', borderRadius: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

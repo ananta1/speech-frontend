@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown, MessageSquare, BookOpen, Trophy, RefreshCw } from 'lucide-react';
+import { Mic, Home, BarChart2, LogIn, Palette, Check, Video, X, HelpCircle, LogOut, Mail, User, Users, Zap, Sparkles, Target, LineChart, Settings, ShieldCheck, UserPlus, ChevronDown, MessageSquare, BookOpen, Trophy, RefreshCw, History, ClipboardList, Activity } from 'lucide-react';
 
 const GeometricBackground = ({ activeTab }) => {
   const randomizeShape = (shape) => ({
@@ -108,6 +108,9 @@ const GeometricBackground = ({ activeTab }) => {
 import AuthForm from './components/AuthForm';
 import AnalyzeVideo from './components/AnalyzeVideo';
 import SpeechInputWrapper from './components/SpeechInputWrapper';
+import Impromptuspeaking from './components/ImpromptuSpeaking';
+import SpeechStudio from './components/SpeechStudio';
+import MetricsDashboard from './components/MetricsDashboard';
 import Profile from './components/Profile';
 import CheckoutForm from './components/CheckoutForm';
 import ClassSetup from './components/ClassSetup';
@@ -174,6 +177,7 @@ const App = () => {
   const [currentHomeImageIdx, setCurrentHomeImageIdx] = useState(0);
   const [featureSlide, setFeatureSlide] = useState(0);
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'red');
+  const [footerAdminOpen, setFooterAdminOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('accentColor', accentColor);
@@ -222,6 +226,17 @@ const App = () => {
       isUserLoggedIn = true;
     }
 
+    // Automatic Traffic Monitoring Log
+    try {
+      fetch(`${API_BASE_URL}/track-visitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      }).catch(err => console.error("Traffic log failed:", err));
+    } catch (err) {
+      console.error(err);
+    }
+
     // Handle Deep Linking
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
@@ -233,6 +248,12 @@ const App = () => {
       setActiveTab('price-plan');
     } else if (path === '/practice') {
       setActiveTab(isUserLoggedIn ? 'practice' : 'signup');
+    } else if (path === '/speech-studio') {
+      setActiveTab(isUserLoggedIn ? 'speech-studio' : 'signup');
+    } else if (path === '/metrics') {
+      setActiveTab(isUserLoggedIn ? 'metrics' : 'signup');
+    } else if (path === '/impromptu') {
+      setActiveTab(isUserLoggedIn ? 'impromptu' : 'signup');
     } else if (path === '/analyze') {
       setActiveTab(isUserLoggedIn ? 'analyze' : 'signup');
     } else if (path === '/profile') {
@@ -249,6 +270,10 @@ const App = () => {
       setActiveTab(isUserLoggedIn ? 'competition-setup' : 'signup');
     } else if (path === '/admin-tools') {
       setActiveTab(isUserLoggedIn ? 'admin-tools' : 'signup');
+    } else if (path === '/traffic-monitoring') {
+      setActiveTab(isUserLoggedIn ? 'traffic-monitoring' : 'signup');
+    } else if (path === '/impromptu-management') {
+      setActiveTab(isUserLoggedIn ? 'impromptu-management' : 'signup');
     } else if (path === '/signup' || path === '/login') {
       setActiveTab('signup');
     }
@@ -281,9 +306,9 @@ const App = () => {
   const userIdRef = useRef(user?.id);
   useEffect(() => { userIdRef.current = user?.id; }, [user?.id]);
 
-  // Fetch Profile on login or when entering practice/profile/price-plan tab
+  // Fetch Profile on login or when entering practice/profile/price-plan/impromptu tab
   useEffect(() => {
-    if (isAuthenticated && userIdRef.current && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan')) {
+    if (isAuthenticated && userIdRef.current && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan' || activeTab === 'impromptu')) {
       fetchProfile();
     }
   }, [isAuthenticated, activeTab]);
@@ -466,7 +491,12 @@ const App = () => {
     { id: 'home', label: 'Home', icon: Home },
     ...(isAuthenticated
       ? [
-        ...(user?.role === 'instructor' || user?.role === 'super_admin' ? [{
+        { id: 'speech-studio', label: 'Speech Studio', icon: Target },
+        { id: 'practice', label: 'SpeakUp', icon: Video },
+        { id: 'analyze', label: 'Analyze', icon: BarChart2 },
+        { id: 'impromptu', label: 'Impromptu', icon: Sparkles },
+        { id: 'metrics', label: 'Metrics', icon: LineChart },
+        ...(user?.role === 'instructor' || user?.role === 'super_admin' || user?.role === 'admin' ? [{
           id: 'instructor-tools',
           label: 'Instructor',
           icon: BookOpen,
@@ -475,20 +505,6 @@ const App = () => {
             { id: 'competition-setup', label: 'Competition', icon: Trophy }
           ]
         }] : []),
-        ...(user?.role === 'super_admin' ? [{
-          id: 'admin-tools',
-          label: 'Admin',
-          icon: ShieldCheck,
-          subItems: [
-            { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
-            { id: 'master-evaluation', label: 'Master Evaluation', icon: Settings },
-            { id: 'user-management', label: 'User Management', icon: Users },
-            { id: 'email-coach', label: 'Email Coach', icon: Mail },
-            { id: 'messages', label: 'Messages', icon: MessageSquare }
-          ]
-        }] : []),
-        { id: 'practice', label: 'Your Speech', icon: Video },
-        { id: 'analyze', label: 'Analyze Speech', icon: BarChart2 },
       ]
       : [{ id: 'signup', label: 'Sign In', icon: LogIn }]
     ),
@@ -534,6 +550,44 @@ const App = () => {
           );
         }
         return <SpeechInputWrapper user={user} onUploadSuccess={() => setActiveTab('analyze')} />;
+      case 'impromptu': {
+        const impromptuFreeLimitReached = !isPro && subscription?.num_valuations >= 5;
+        const impromptuProLimitReached = isPro && subscription?.num_valuations >= 25;
+
+        if (impromptuFreeLimitReached || impromptuProLimitReached) {
+          return (
+            <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', borderRadius: '1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+              <h2 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '1.5rem' }}>Limit Reached</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '2rem' }}>
+                {impromptuFreeLimitReached
+                  ? "You have reached your limit of 5 free speech evaluations. Please upgrade to the Pro Plan to continue."
+                  : "You have reached your Pro limit of 25 speech evaluations for this month. Your limit will reset on your next billing cycle."
+                }
+              </p>
+              <button
+                onClick={() => setActiveTab('price-plan')}
+                style={{
+                  padding: '1rem 2.5rem',
+                  background: 'var(--accent-gradient)',
+                  color: 'white',
+                  borderRadius: '2rem',
+                  fontWeight: '700',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-glow)'
+                }}
+              >
+                {impromptuFreeLimitReached ? "Go to Price Plan" : "View Plan Status"}
+              </button>
+            </div>
+          );
+        }
+        return <Impromptuspeaking user={user} onUploadSuccess={() => setActiveTab('analyze')} />;
+      }
+      case 'speech-studio':
+        return <SpeechStudio user={user} />;
+      case 'metrics':
+        return <MetricsDashboard user={user} />;
       case 'analyze':
         return <AnalyzeVideo user={user} />;
       case 'signup':
@@ -549,12 +603,15 @@ const App = () => {
       case 'competition-setup':
         return <CompetitionSetup user={user} />;
       case 'admin-tools':
+      case 'traffic-monitoring':
       case 'setup-instructor':
       case 'master-evaluation':
       case 'user-management':
       case 'email-coach':
+      case 'email-history':
       case 'messages':
-        return <AdminTools user={user} activeSubTab={activeTab === 'admin-tools' ? 'setup-instructor' : activeTab} />;
+      case 'impromptu-management':
+        return <AdminTools user={user} activeSubTab={activeTab === 'admin-tools' ? 'traffic-monitoring' : activeTab} />;
       case 'profile':
         return <Profile user={user} refreshAppProfile={fetchProfile} />;
       case 'faq':
@@ -728,7 +785,7 @@ const App = () => {
                   e.currentTarget.style.boxShadow = 'var(--shadow-glow)';
                 }}
               >
-                {isAuthenticated ? 'Start Analyzing Your Speech' : 'Create Free Account'}
+                {isAuthenticated ? 'Start your Speech' : 'Create Free Account'}
               </button>
 
             </div>
@@ -1106,17 +1163,14 @@ const App = () => {
                 className="welcome-btn"
                 onClick={() => setActiveTab('profile')}
                 style={{
-                  fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '0.25rem',
+                  fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '0.25rem',
                   background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0,
-                  opacity: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  transition: 'color 0.2s'
+                  display: 'inline-flex', alignItems: 'center', transition: 'color 0.2s'
                 }}
                 onMouseOver={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                 onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
               >
-                Welcome, <span style={{ color: 'var(--accent-primary)', marginLeft: '4px', textDecoration: 'underline' }}>{user.name}</span>
+                Welcome, <span style={{ color: 'var(--accent-primary)', marginLeft: '4px', textDecoration: 'underline', fontWeight: '700' }}>{user.name}</span>
               </button>
             )}
             <span style={{
@@ -1124,16 +1178,16 @@ const App = () => {
               color: 'var(--text-secondary)',
               letterSpacing: '0.5px',
               fontWeight: 500,
-              marginTop: '0.25rem'
+              marginTop: '0.2rem'
             }}>
-              {isAuthenticated ? 'Take your speaking skills to next level' : 'Take your speech to the next level'}
+              Take your speaking skills to next level
             </span>
           </div>
         </div>
 
-        {/* Right container: Navigation Menu and Accent Color Switch */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <nav style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {/* Right container: Navigation Menu */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginLeft: '1.5rem' }}>
+          <nav style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {menuItems.map((item) => (
               <div
                 key={item.id}
@@ -1350,6 +1404,91 @@ const App = () => {
             <Mail size={16} />
             Contact Us
           </button>
+
+          {/* Admin Upward Dropdown for Admins */}
+          {(user?.role === 'super_admin' || user?.role === 'admin') && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setFooterAdminOpen(!footerAdminOpen)}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '0.5rem',
+                  color: footerAdminOpen ? '#38bdf8' : 'var(--text-secondary)',
+                  background: footerAdminOpen ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: '1px solid var(--glass-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <ShieldCheck size={16} color="#38bdf8" />
+                Admin Tools
+                <ChevronDown size={14} style={{ transform: footerAdminOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+              </button>
+
+              {/* Upward Popover Menu */}
+              {footerAdminOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '130%',
+                    right: 0,
+                    minWidth: '220px',
+                    background: 'var(--bg-secondary, #0f172a)',
+                    borderRadius: '1rem',
+                    padding: '0.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                    boxShadow: '0 -10px 25px rgba(0, 0, 0, 0.5)',
+                    border: '1px solid var(--glass-border)',
+                    zIndex: 200
+                  }}
+                >
+                  {[
+                    { id: 'traffic-monitoring', label: 'Traffic Monitoring', icon: Activity },
+                    { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
+                    { id: 'master-evaluation', label: 'Master Evaluation', icon: Settings },
+                    { id: 'user-management', label: 'User Management', icon: Users },
+                    { id: 'email-coach', label: 'Email Coach', icon: Mail },
+                    { id: 'email-history', label: 'Email History', icon: History },
+                    { id: 'messages', label: 'Messages', icon: MessageSquare },
+                    { id: 'impromptu-management', label: 'Impromptu Topics', icon: ClipboardList }
+                  ].map(subItem => (
+                    <button
+                      key={subItem.id}
+                      onClick={() => {
+                        setActiveTab(subItem.id);
+                        setFooterAdminOpen(false);
+                      }}
+                      style={{
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '0.6rem',
+                        fontSize: '0.85rem',
+                        color: activeTab === subItem.id ? '#38bdf8' : 'var(--text-primary)',
+                        background: activeTab === subItem.id ? 'rgba(56,189,248,0.1)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        fontWeight: activeTab === subItem.id ? '700' : '400',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <subItem.icon size={15} />
+                      {subItem.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          )}
         </div>
       </footer>
 

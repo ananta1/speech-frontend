@@ -150,7 +150,15 @@ const SpeechReportCard = ({ speech, studentId, onReevaluate }) => {
                     >
                         <div style={{ padding: '0 1.25rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {/* Key Metrics Row */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
+                                {(analysis?.overall_score || report?.overallScore) && (
+                                    <div style={{ padding: '0.8rem', background: 'rgba(34,197,94,0.06)', borderRadius: '0.75rem', textAlign: 'center', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.3rem', fontWeight: '700' }}>Overall Rating</div>
+                                        <div style={{ fontSize: '1.3rem', fontWeight: '900', color: getScoreColor(analysis?.overall_score || report?.overallScore) }}>
+                                            {analysis?.overall_score || report?.overallScore}/10
+                                        </div>
+                                    </div>
+                                )}
                                 <div style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.04)', borderRadius: '0.75rem', textAlign: 'center', border: '1px solid var(--glass-border)' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600' }}>Word Count</div>
                                     <div style={{ fontSize: '1.3rem', fontWeight: '800', color: 'var(--accent-primary)' }}>{report.wordCount || 0}</div>

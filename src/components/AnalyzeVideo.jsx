@@ -13,15 +13,19 @@ const AnalyzeVideo = ({ user }) => {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [classCriteria, setClassCriteria] = useState(null);
 
+    const [activeVideo, setActiveVideo] = useState(null);
+
     // Fetch class criteria if student belongs to a class
     useEffect(() => {
-        if (user) {
+        const u = user || JSON.parse(localStorage.getItem('speechUser') || 'null');
+        const userId = u?.id || u?.userId;
+        if (userId) {
             const fetchClassCriteria = async () => {
                 try {
                     const res = await fetch(`${API_BASE_URL}/get-profile`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.id || user.userId })
+                        body: JSON.stringify({ userId })
                     });
                     const data = await res.json();
                     if (res.ok && data.classCriteria) {
@@ -43,9 +47,7 @@ const AnalyzeVideo = ({ user }) => {
     };
 
     useEffect(() => {
-        if (user) {
-            fetchVideos();
-        }
+        fetchVideos();
     }, [user]);
 
     // Auto-polling for IN_PROGRESS videos
@@ -65,13 +67,23 @@ const AnalyzeVideo = ({ user }) => {
     }, [videos]);
 
     const fetchVideos = async () => {
+        const u = user || JSON.parse(localStorage.getItem('speechUser') || 'null');
+        const userId = u?.id || u?.userId;
+        const email = u?.email;
+
+        if (!userId && !email) {
+            setIsLoading(false);
+            setError("Please sign in to view your speech analysis records.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         try {
             const res = await fetch(`${API_BASE_URL}/list-videos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, email: user.email })
+                body: JSON.stringify({ userId: userId || "", email: email || "" })
             });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -81,7 +93,7 @@ const AnalyzeVideo = ({ user }) => {
             setLastUpdated(new Date().toLocaleTimeString());
         } catch (err) {
             console.error(err);
-            setError(`Error loading videos: ${err.message}`);
+            setError(`Error loading speeches: ${err.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -135,11 +147,12 @@ const AnalyzeVideo = ({ user }) => {
         }
     };
 
-    const handleViewReport = async (reportUrl) => {
-        if (!reportUrl) return;
+    const handleViewReport = async (video) => {
+        if (!video.analysisUrl) return;
         setIsReportLoading(true);
+        setActiveVideo(video);
         try {
-            const res = await fetch(reportUrl);
+            const res = await fetch(video.analysisUrl);
             const data = await res.json();
             setSelectedReport(data);
         } catch (err) {
@@ -149,6 +162,8 @@ const AnalyzeVideo = ({ user }) => {
             setIsReportLoading(false);
         }
     };
+
+
 
     const handleDelete = async (key) => {
         if (!window.confirm("Are you sure you want to delete this speech? This action cannot be undone.")) return;
@@ -311,7 +326,8 @@ const AnalyzeVideo = ({ user }) => {
 
                                 {video.analysisStatus === 'COMPLETED' ? (
                                     <button
-                                        onClick={() => handleViewReport(video.analysisUrl)}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewReport(video); }}
                                         style={{
                                             padding: '0.6rem 1.2rem', borderRadius: '0.5rem',
                                             background: 'var(--success)', color: 'white',
@@ -423,7 +439,17 @@ const AnalyzeVideo = ({ user }) => {
                                 </div>
                             ) : (
                                 <>
-                                    <h2 className="gradient-text" style={{ marginTop: 0, marginBottom: '1.5rem' }}>Analysis Report</h2>
+                                    <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingRight: '2rem' }}>
+                                        <h2 className="gradient-text" style={{ marginTop: 0, marginBottom: 0 }}>Analysis Report</h2>
+                                        {(analysisData?.overall_score || selectedReport?.overallScore) && (
+                                            <div style={{ padding: '0.4rem 1rem', borderRadius: '999px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Overall Score:</span>
+                                                <span style={{ fontSize: '1.3rem', fontWeight: '900', color: getScoreColor(analysisData?.overall_score || selectedReport?.overallScore) }}>
+                                                    {analysisData?.overall_score || selectedReport?.overallScore}/10
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {analysisData && (
                                         <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -640,8 +666,13 @@ const AnalyzeVideo = ({ user }) => {
                                             {/* Body Language */}
                                             {shouldShow('body_language') && (
                                                 <div className="glass-panel" style={{ padding: '1rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
-                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                                        Body Language <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({analysisData.body_language?.primary_emotion || "Unknown"})</span>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
+                                                            Body Language <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({analysisData.body_language?.primary_emotion || "Unknown"})</span>
+                                                        </div>
+                                                        {analysisData.body_language?.score !== undefined && (
+                                                            <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.body_language.score), fontSize: '0.95rem' }}>Score: {analysisData.body_language.score}/10</div>
+                                                        )}
                                                     </div>
                                                     <div style={{ fontSize: '1rem', lineHeight: '1.6', opacity: 0.9, marginBottom: '0.8rem' }}>
                                                         {analysisData.body_language?.summary || "Body language analysis not available."}
@@ -678,9 +709,14 @@ const AnalyzeVideo = ({ user }) => {
                                             {/* Delivery Metrics */}
                                             {shouldShow('delivery_metrics') && analysisData.delivery_metrics && (
                                                 <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem', marginTop: '1rem' }}>
-                                                    <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginTop: 0, marginBottom: '1.2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                                                        Delivery & Pacing
-                                                    </h4>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                                                        <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginTop: 0, marginBottom: 0 }}>
+                                                            Delivery & Pacing
+                                                        </h4>
+                                                        {analysisData.delivery_metrics.score !== undefined && (
+                                                            <div style={{ fontWeight: 'bold', color: getScoreColor(analysisData.delivery_metrics.score), fontSize: '0.95rem' }}>Score: {analysisData.delivery_metrics.score}/10</div>
+                                                        )}
+                                                    </div>
                                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                                                         <div>
                                                             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '0.4rem' }}>
@@ -887,6 +923,11 @@ const AnalyzeVideo = ({ user }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <style>{`
+                .spinner { animation: rotate 2s linear infinite; }
+                @keyframes rotate { 100% { transform: rotate(360deg); } }
+            `}</style>
         </div>
     );
 };

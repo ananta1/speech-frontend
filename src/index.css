@@ -184,12 +184,13 @@ button {
   transition: all 0.2s ease;
   background: #ff6b6b !important;
   background-image: none !important;
-  color: black !important;
+  color: #ffffff !important;
 }
 
 /* Hover state for general buttons (excluding navigation buttons) */
 button:not(.nav-btn):hover {
   background: #ff8787 !important; /* Lighter red when hovered */
+  color: #ffffff !important;
 }
 
 /* Active / Focus / Selected highlight state for general buttons */
@@ -197,6 +198,7 @@ button:not(.nav-btn):active,
 button:not(.nav-btn):focus {
   background: #e04d4d !important; /* Darker red highlight when active/focused */
   box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.4) !important; /* Glow highlight ring */
+  color: #ffffff !important;
 }
 
 button:disabled {
@@ -207,19 +209,20 @@ button:disabled {
 /* Navigation buttons styling overrides */
 button.nav-btn {
   background: transparent !important;
-  color: var(--text-secondary) !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
   border: 1px solid transparent !important;
 }
 
 button.nav-btn:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: var(--text-primary) !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #000000 !important;
 }
 
 /* Highlighted (selected) navigation button style */
 button.nav-btn.active {
   background: #e04d4d !important; /* Distinct dark red highlight color for the selected tab */
-  color: white !important; /* White text on the selected tab button */
+  color: #ffffff !important; /* White text on the selected red tab button */
   border: 1px solid var(--glass-border) !important;
 }
 
