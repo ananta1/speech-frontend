@@ -334,12 +334,12 @@ const Profile = ({ user, refreshAppProfile }) => {
                             </div>
                         ) : (
                             <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                                <p>Upgrade to Pro to unlock:</p>
+                                <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Upgrade to Pro to unlock:</p>
                                 <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
-                                    <li>Unlimited Speech Analysis</li>
-                                    <li>Advanced AI Feedback</li>
-                                    <li>Improvisation Suggestions</li>
-                                    <li>Detailed Delivery Metrics</li>
+                                    <li>25 Prepared Speech Evaluations / Month</li>
+                                    <li>50 Impromptu Speaking Sessions / Month</li>
+                                    <li>Unlimited Speech Studio Drills</li>
+                                    <li>Advanced AI Analysis & Detailed Metrics</li>
                                 </ul>
                             </div>
                         )}

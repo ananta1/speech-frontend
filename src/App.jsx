@@ -115,10 +115,12 @@ import Profile from './components/Profile';
 import CheckoutForm from './components/CheckoutForm';
 import ClassSetup from './components/ClassSetup';
 import CompetitionSetup from './components/CompetitionSetup';
+import InstructorTools from './components/InstructorTools';
 import AdminTools from './components/AdminTools';
 import FAQ from './components/FAQ';
 import Contact from './components/Contact';
 import Chatbot from './components/Chatbot';
+import DailyRoutine from './components/DailyRoutine';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL, STRIPE_PUBLISHABLE_KEY } from './config';
 import { loadStripe } from '@stripe/stripe-js';
@@ -306,9 +308,9 @@ const App = () => {
   const userIdRef = useRef(user?.id);
   useEffect(() => { userIdRef.current = user?.id; }, [user?.id]);
 
-  // Fetch Profile on login or when entering practice/profile/price-plan/impromptu tab
+  // Fetch Profile on login or when entering practice/profile/price-plan/impromptu/speech-studio/metrics tab
   useEffect(() => {
-    if (isAuthenticated && userIdRef.current && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan' || activeTab === 'impromptu')) {
+    if (isAuthenticated && userIdRef.current && (activeTab === 'practice' || activeTab === 'profile' || activeTab === 'price-plan' || activeTab === 'impromptu' || activeTab === 'speech-studio' || activeTab === 'metrics')) {
       fetchProfile();
     }
   }, [isAuthenticated, activeTab]);
@@ -489,25 +491,18 @@ const App = () => {
 
   const menuItems = [
     { id: 'home', label: 'Home', icon: Home },
-    ...(isAuthenticated
-      ? [
-        { id: 'speech-studio', label: 'Speech Studio', icon: Target },
-        { id: 'practice', label: 'SpeakUp', icon: Video },
-        { id: 'analyze', label: 'Analyze', icon: BarChart2 },
-        { id: 'impromptu', label: 'Impromptu', icon: Sparkles },
-        { id: 'metrics', label: 'Metrics', icon: LineChart },
-        ...(user?.role === 'instructor' || user?.role === 'super_admin' || user?.role === 'admin' ? [{
-          id: 'instructor-tools',
-          label: 'Instructor',
-          icon: BookOpen,
-          subItems: [
-            { id: 'class-setup', label: 'Class Setup', icon: Settings },
-            { id: 'competition-setup', label: 'Competition', icon: Trophy }
-          ]
-        }] : []),
-      ]
-      : [{ id: 'signup', label: 'Sign In', icon: LogIn }]
-    ),
+    { id: 'daily', label: 'Daily', icon: ClipboardList },
+    { id: 'speech-studio', label: 'Speech Studio', icon: Target, requiresAuth: true },
+    { id: 'practice', label: 'SpeakUp', icon: Video, requiresAuth: true },
+    { id: 'analyze', label: 'Analyze', icon: BarChart2, requiresAuth: true },
+    { id: 'impromptu', label: 'Impromptu', icon: Sparkles, requiresAuth: true },
+    { id: 'metrics', label: 'Metrics', icon: LineChart, requiresAuth: true },
+    ...(isAuthenticated && (user?.role === 'instructor' || user?.role === 'super_admin' || user?.role === 'admin') ? [{
+      id: 'instructor-tools',
+      label: 'Instructor',
+      icon: BookOpen
+    }] : []),
+    ...(!isAuthenticated ? [{ id: 'signup', label: 'Sign In', icon: LogIn }] : []),
     ...(user?.role !== 'student' ? [{ id: 'price-plan', label: 'Price Plan', icon: Check }] : []),
     ...(isAuthenticated ? [{ id: 'logout', label: '', icon: LogOut, tooltip: 'Logout' }] : []),
   ];
@@ -515,6 +510,24 @@ const App = () => {
   const renderContent = () => {
     const isPro = (subscription?.subscription_plan === 'Pro' || subscription?.plan === 'pro') &&
       (!subscription.sub_end_date || new Date(subscription.sub_end_date) > new Date());
+
+    const requiresAuthTabs = [
+      'speech-studio', 'practice', 'analyze', 'impromptu', 'metrics', 
+      'instructor-tools', 'class-setup', 'competition-setup', 'admin-tools', 
+      'traffic-monitoring', 'impromptu-management', 'profile'
+    ];
+    if (requiresAuthTabs.includes(activeTab) && !isAuthenticated) {
+      return (
+        <AuthForm 
+          onLoginSuccess={(userData) => {
+            localStorage.setItem('speechUser', JSON.stringify(userData));
+            setIsAuthenticated(true);
+            setUser(userData);
+            setActiveTab(activeTab);
+          }} 
+        />
+      );
+    }
 
     switch (activeTab) {
       case 'practice':
@@ -584,6 +597,8 @@ const App = () => {
         }
         return <Impromptuspeaking user={user} onUploadSuccess={() => setActiveTab('analyze')} />;
       }
+      case 'daily':
+        return <DailyRoutine user={user} setActiveTab={setActiveTab} />;
       case 'speech-studio':
         return <SpeechStudio user={user} />;
       case 'metrics':
@@ -598,15 +613,17 @@ const App = () => {
           setActiveTab('home');
         }} />;
       case 'instructor-tools':
+        return <InstructorTools user={user} initialTab="hub" />;
       case 'class-setup':
-        return <ClassSetup user={user} />;
+        return <InstructorTools user={user} initialTab="class-setup" />;
       case 'competition-setup':
-        return <CompetitionSetup user={user} />;
+        return <InstructorTools user={user} initialTab="competition-setup" />;
       case 'admin-tools':
       case 'traffic-monitoring':
       case 'setup-instructor':
       case 'master-evaluation':
       case 'user-management':
+      case 'feature-campaign':
       case 'email-coach':
       case 'email-history':
       case 'messages':
@@ -620,15 +637,15 @@ const App = () => {
         return <Contact />;
       case 'home':
         return (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '3rem', paddingBottom: '5rem' }}>
+          <div style={{ maxWidth: '1600px', margin: '0 auto', width: '98%', position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '3rem', paddingBottom: '5rem' }}>
 
             {/* HER0 SECTION */}
             {/* HERO DASHBOARD SECTION */}
             <div className="glass-panel" style={{
-              width: '100%', zIndex: 1, padding: '2.5rem', borderRadius: '2rem',
+              width: '100%', zIndex: 1, padding: '2.5rem 3rem', borderRadius: '2rem',
               background: 'var(--glass)', border: '1px solid var(--glass-border)',
               position: 'relative', overflow: 'visible', textAlign: 'left',
-              display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '3rem', alignItems: 'center'
+              display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2.5rem', alignItems: 'stretch'
             }}>
               {/* Decorative background glow */}
               <div style={{
@@ -638,8 +655,8 @@ const App = () => {
               }} />
 
               {/* Column 1: Hero */}
-              <div style={{ flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'flex-start' }}>
-                <div style={{ position: 'relative', width: 'clamp(120px, 15vw, 160px)', height: 'clamp(120px, 15vw, 160px)', flexShrink: 0 }}>
+              <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'flex-start', justifyContent: 'center' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '340px', height: '260px', flexShrink: 0 }}>
                   <AnimatePresence mode="popLayout">
                     <motion.img
                       key={currentHomeImageIdx}
@@ -663,7 +680,7 @@ const App = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <h1 style={{
-                    fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', margin: '0 0 0.5rem 0',
+                    fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', margin: '0 0 0.5rem 0',
                     letterSpacing: '-1px', lineHeight: '1.1', fontWeight: '900', color: 'var(--text-primary)',
                     textAlign: 'left'
                   }}>
@@ -671,7 +688,7 @@ const App = () => {
                     <span style={{ color: 'red' }}>Public Speaking</span>
                   </h1>
                   <p style={{
-                    color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5',
+                    color: 'var(--text-secondary)', fontSize: '0.98rem', lineHeight: '1.55',
                     margin: 0, fontWeight: '400', textAlign: 'left'
                   }}>
                     Join thousands of professionals using <strong style={{ color: 'var(--text-primary)' }}>Practice Your Speech</strong> to conquer stage fright and deliver high-impact presentations with real-time AI feedback.
@@ -680,15 +697,15 @@ const App = () => {
               </div>
 
               {/* Left Column: Workflow */}
-              <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', color: 'red' }}>How It Works</h3>
+              <div style={{ flex: '1.2 1 380px', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1.5rem 1.75rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: 'red' }}>How It Works</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {[
-                    { icon: Video, title: '1. Record', desc: 'Securely record or upload your speech' },
-                    { icon: Sparkles, title: '2. Analyze', desc: 'Your speech will go for AI analysis' },
-                    { icon: BarChart2, title: '3. Review Analysis', desc: 'AI insights and Evaluation' },
-                    { icon: Settings, title: '4. Refine', desc: 'Refine the transcribed speech' },
-                    { icon: RefreshCw, title: '5. Repeat', desc: 'Repeat the process to master your speech' }
+                    { icon: Sparkles, title: '1. Speech Studio', desc: 'Practice sentence-level pronunciation, syllable stress, and word articulation with instant native audio comparison.' },
+                    { icon: Zap, title: '2. SpeakUp', desc: 'Record your speech video by speaking confidently in front of laptop camera and upload. Upload if you have speech already recorded.' },
+                    { icon: Target, title: '3. Impromptu Speaking', desc: 'Master quick-thinking public speaking with randomized topic challenges, target 1–2 minute timers, and instant performance scoring.' },
+                    { icon: Video, title: '4. Analyze', desc: 'Receive comprehensive AI video & speech evaluations detailing organization, body language, delivery rhythm, and grammar.' },
+                    { icon: LineChart, title: '5. Metrics', desc: 'Track long-term score evolution, performance line graphs, and category trends across Studio, Impromptu, and Prepared speeches.' }
                   ].map((step, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
                       <div style={{
@@ -795,7 +812,7 @@ const App = () => {
       case 'price-plan': {
         return (
           <div className="glass-panel" style={{
-            padding: '3rem',
+            padding: '1.5rem 2.5rem 1.5rem 2.5rem',
             textAlign: 'center',
             borderRadius: '1.5rem',
             maxWidth: '1000px',
@@ -803,14 +820,14 @@ const App = () => {
             border: '1px solid var(--glass-border)',
             background: 'var(--glass)'
           }}>
-            <h2 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '3rem' }}>Choose Your Plan</h2>
+            <h2 className="gradient-text" style={{ fontSize: '2.1rem', marginBottom: '1.25rem' }}>Choose Your Plan</h2>
             {!isPro && subscription?.num_valuations >= 5 && (
               <p style={{
                 background: 'rgba(239, 68, 68, 0.1)',
                 color: '#ef4444',
-                padding: '1rem',
+                padding: '0.75rem',
                 borderRadius: '0.5rem',
-                marginBottom: '2rem',
+                marginBottom: '1rem',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
                 fontWeight: '600'
               }}>
@@ -820,7 +837,7 @@ const App = () => {
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '2rem',
+              gap: '1.5rem',
               justifyContent: 'center',
               alignItems: 'stretch'
             }}>
@@ -829,7 +846,7 @@ const App = () => {
               {/* Free Plan - Only show if not on an active renewing Pro plan */}
               {!(isPro && subscription?.renewal !== false) && (
                 <div style={{
-                  padding: '2rem',
+                  padding: '1.5rem',
                   borderRadius: '1rem',
                   background: 'var(--glass)',
                   border: '3px solid #ef4444',
@@ -837,7 +854,7 @@ const App = () => {
                   flexDirection: 'column',
                   alignItems: 'center',
                   textAlign: 'center',
-                  width: '320px',
+                  width: '380px',
                   transition: 'transform 0.3s ease',
                   position: 'relative',
                   boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)'
@@ -855,26 +872,32 @@ const App = () => {
                     fontSize: '0.8rem',
                     fontWeight: 'bold'
                   }}>YOUR PLAN</div>
-                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Free Plan</h3>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '1rem' }}>Free</div>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Your first 5 speech evaluations are free</p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', width: '100%', textAlign: 'left' }}>
-                    <li style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Check size={16} color="var(--accent-primary)" /> 5 Free Speech Evaluations
+                  <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Free Plan</h3>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Free</div>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>Free monthly practice quotas for all features</p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.25rem 0', width: '100%', textAlign: 'left' }}>
+                    <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                      <Check size={16} color="var(--accent-primary)" /> 5 Prepared Speech Evaluations
                     </li>
-                    <li style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                      <Check size={16} color="var(--accent-primary)" /> 5 Impromptu Sessions / Month
+                    </li>
+                    <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                      <Check size={16} color="var(--accent-primary)" /> 15 Speech Studio Drills / Month
+                    </li>
+                    <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
                       <Check size={16} color="var(--accent-primary)" /> Basic AI Analysis
                     </li>
-                    <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <li style={{ padding: '0.4rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
                       <Check size={16} color="var(--accent-primary)" /> Email Support
                     </li>
                   </ul>
                   {isAuthenticated ? (
                     <div style={{
-                      padding: '0.8rem 2rem',
+                      padding: '0.6rem 2rem',
                       color: !isPro ? 'var(--accent-primary)' : 'var(--text-secondary)',
                       fontWeight: '700',
-                      fontSize: '1.1rem',
+                      fontSize: '1rem',
                     }}>
                       {!isPro ? 'Current Plan' : 'Free Tier'}
                     </div>
@@ -882,7 +905,7 @@ const App = () => {
                     <button
                       onClick={() => setActiveTab('signup')}
                       style={{
-                        padding: '0.8rem 2rem',
+                        padding: '0.7rem 2rem',
                         background: 'var(--glass)',
                         color: 'var(--text-primary)',
                         borderRadius: '2rem',
@@ -909,7 +932,7 @@ const App = () => {
 
               {/* Pro Plan */}
               <div style={{
-                padding: '2rem',
+                padding: '1.5rem',
                 borderRadius: '1rem',
                 background: 'var(--glass)',
                 border: '2px solid var(--accent-primary)',
@@ -919,7 +942,7 @@ const App = () => {
                 textAlign: 'center',
                 position: 'relative',
                 boxShadow: 'var(--shadow-glow)',
-                width: '320px',
+                width: '380px',
                 transition: 'transform 0.3s ease'
               }}
                 onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
@@ -935,20 +958,26 @@ const App = () => {
                   fontSize: '0.8rem',
                   fontWeight: 'bold'
                 }}>RECOMMENDED</div>
-                <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Pro Plan</h3>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--accent-primary)', marginBottom: '0.2rem' }}>$7<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/month</span></div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>(incl sales tax + card fee)</div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', width: '100%', textAlign: 'left' }}>
-                  <li style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Check size={16} color="var(--accent-primary)" /> 25 Speech Evaluations / Month
+                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Pro Plan</h3>
+                <div style={{ fontSize: '2.2rem', fontWeight: 'bold', color: 'var(--accent-primary)', marginBottom: '0.1rem' }}>$7<span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>/month</span></div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>(incl sales tax + card fee)</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.25rem 0', width: '100%', textAlign: 'left' }}>
+                  <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                    <Check size={16} color="var(--accent-primary)" /> 25 Prepared Speech Evaluations / Month
                   </li>
-                  <li style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Check size={16} color="var(--accent-primary)" /> Advanced AI Analysis
+                  <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                    <Check size={16} color="var(--accent-primary)" /> 50 Impromptu Sessions / Month
                   </li>
-                  <li style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                    <Check size={16} color="var(--accent-primary)" /> Unlimited Speech Studio Drills
+                  </li>
+                  <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                    <Check size={16} color="var(--accent-primary)" /> Advanced AI Analysis & Detailed Metrics
+                  </li>
+                  <li style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
                     <Check size={16} color="var(--accent-primary)" /> Priority Support
                   </li>
-                  <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <li style={{ padding: '0.4rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
                     <Check size={16} color="var(--accent-primary)" /> Early Access to New Features
                   </li>
                 </ul>
@@ -1186,55 +1215,62 @@ const App = () => {
         </div>
 
         {/* Right container: Navigation Menu */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginLeft: '1.5rem' }}>
-          <nav style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-            {menuItems.map((item) => (
-              <div
-                key={item.id}
-                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
-                onMouseEnter={() => setHoveredItem(item.id)}
-                onMouseLeave={() => setHoveredItem(null)}
-              >
-                <button
-                  className={(activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'nav-btn active' : 'nav-btn'}
-                  onClick={() => {
-                    if (item.id === 'logout') {
-                      handleLogout();
-                    } else if (item.subItems) {
-                      setOpenMenu(openMenu === item.id ? null : item.id);
-                    } else {
-                      setActiveTab(item.id);
-                      setOpenMenu(null);
-                    }
-                  }}
-                  style={{
-                    padding: '0.5rem 0.9rem',
-                    borderRadius: '0.75rem',
-                    color: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--glass)' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontWeight: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? '600' : '400',
-                    transition: 'all 0.3s ease',
-                    border: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? '1px solid var(--glass-border)' : '1px solid transparent'
-                  }}
-                  title={item.tooltip || item.label}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginLeft: '1.5rem', minWidth: 0, gap: '0.75rem' }}>
+          <nav style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', alignItems: 'center', maxWidth: '100%', paddingBottom: '2px' }}>
+            {menuItems.map((item) => {
+              const isBlurred = item.requiresAuth && !isAuthenticated;
+              return (
+                <div
+                  key={item.id}
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+                  onMouseEnter={() => !isBlurred && setHoveredItem(item.id)}
+                  onMouseLeave={() => setHoveredItem(null)}
                 >
-                  <item.icon size={18} />
-                  {item.label}
-                  {item.subItems && (
-                    <ChevronDown
-                      size={14}
-                      style={{
-                        marginLeft: '0.25rem',
-                        opacity: 0.7,
-                        transform: openMenu === item.id ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.3s ease'
-                      }}
-                    />
-                  )}
-                </button>
+                  <button
+                    className={(activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'nav-btn active' : 'nav-btn'}
+                    onClick={() => {
+                      if (isBlurred) {
+                        setActiveTab('signup');
+                      } else if (item.id === 'logout') {
+                        handleLogout();
+                      } else if (item.subItems) {
+                        setOpenMenu(openMenu === item.id ? null : item.id);
+                      } else {
+                        setActiveTab(item.id);
+                        setOpenMenu(null);
+                      }
+                    }}
+                    style={{
+                      padding: '0.5rem 0.9rem',
+                      borderRadius: '0.75rem',
+                      color: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      background: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? 'var(--glass)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? '600' : '400',
+                      transition: 'all 0.3s ease',
+                      border: (activeTab === item.id || (item.subItems && item.subItems.some(si => si.id === activeTab))) ? '1px solid var(--glass-border)' : '1px solid transparent',
+                      filter: isBlurred ? 'blur(2.2px) grayscale(30%)' : 'none',
+                      opacity: isBlurred ? 0.55 : 1,
+                      cursor: 'pointer'
+                    }}
+                    title={isBlurred ? `Sign In to Unlock ${item.label}` : (item.tooltip || item.label)}
+                  >
+                    <item.icon size={18} />
+                    {item.label}
+                    {item.subItems && (
+                      <ChevronDown
+                        size={14}
+                        style={{
+                          marginLeft: '0.25rem',
+                          opacity: 0.7,
+                          transform: openMenu === item.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s ease'
+                        }}
+                      />
+                    )}
+                  </button>
 
                 {/* Vertical Stacked Dropdown - Click Activated */}
                 {openMenu === item.id && item.subItems && (
@@ -1287,7 +1323,7 @@ const App = () => {
                   </motion.div>
                 )}
               </div>
-            ))}
+            )})}
           </nav>
 
           <button
@@ -1405,89 +1441,26 @@ const App = () => {
             Contact Us
           </button>
 
-          {/* Admin Upward Dropdown for Admins */}
+          {/* Direct Admin Tools Button for Admins */}
           {(user?.role === 'super_admin' || user?.role === 'admin') && (
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setFooterAdminOpen(!footerAdminOpen)}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '0.5rem',
-                  color: footerAdminOpen ? '#38bdf8' : 'var(--text-secondary)',
-                  background: footerAdminOpen ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: '1px solid var(--glass-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  fontWeight: '700',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer'
-                }}
-              >
-                <ShieldCheck size={16} color="#38bdf8" />
-                Admin Tools
-                <ChevronDown size={14} style={{ transform: footerAdminOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-              </button>
-
-              {/* Upward Popover Menu */}
-              {footerAdminOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    position: 'absolute',
-                    bottom: '130%',
-                    right: 0,
-                    minWidth: '220px',
-                    background: 'var(--bg-secondary, #0f172a)',
-                    borderRadius: '1rem',
-                    padding: '0.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.25rem',
-                    boxShadow: '0 -10px 25px rgba(0, 0, 0, 0.5)',
-                    border: '1px solid var(--glass-border)',
-                    zIndex: 200
-                  }}
-                >
-                  {[
-                    { id: 'traffic-monitoring', label: 'Traffic Monitoring', icon: Activity },
-                    { id: 'setup-instructor', label: 'Setup Instructor', icon: UserPlus },
-                    { id: 'master-evaluation', label: 'Master Evaluation', icon: Settings },
-                    { id: 'user-management', label: 'User Management', icon: Users },
-                    { id: 'email-coach', label: 'Email Coach', icon: Mail },
-                    { id: 'email-history', label: 'Email History', icon: History },
-                    { id: 'messages', label: 'Messages', icon: MessageSquare },
-                    { id: 'impromptu-management', label: 'Impromptu Topics', icon: ClipboardList }
-                  ].map(subItem => (
-                    <button
-                      key={subItem.id}
-                      onClick={() => {
-                        setActiveTab(subItem.id);
-                        setFooterAdminOpen(false);
-                      }}
-                      style={{
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '0.6rem',
-                        fontSize: '0.85rem',
-                        color: activeTab === subItem.id ? '#38bdf8' : 'var(--text-primary)',
-                        background: activeTab === subItem.id ? 'rgba(56,189,248,0.1)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.65rem',
-                        fontWeight: activeTab === subItem.id ? '700' : '400',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left'
-                      }}
-                    >
-                      <subItem.icon size={15} />
-                      {subItem.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </div>
+            <button
+              className={(activeTab === 'admin-tools' || activeTab === 'traffic-monitoring' || activeTab === 'setup-instructor' || activeTab === 'master-evaluation' || activeTab === 'user-management' || activeTab === 'feature-campaign' || activeTab === 'email-coach' || activeTab === 'email-history' || activeTab === 'messages' || activeTab === 'impromptu-management') ? 'nav-btn active' : 'nav-btn'}
+              onClick={() => setActiveTab('admin-tools')}
+              style={{
+                padding: '0.4rem 0.8rem',
+                borderRadius: '0.5rem',
+                color: (activeTab === 'admin-tools' || activeTab === 'traffic-monitoring' || activeTab === 'setup-instructor' || activeTab === 'master-evaluation' || activeTab === 'user-management' || activeTab === 'feature-campaign' || activeTab === 'email-coach' || activeTab === 'email-history' || activeTab === 'messages' || activeTab === 'impromptu-management') ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: (activeTab === 'admin-tools' || activeTab === 'traffic-monitoring' || activeTab === 'setup-instructor' || activeTab === 'master-evaluation' || activeTab === 'user-management' || activeTab === 'feature-campaign' || activeTab === 'email-coach' || activeTab === 'email-history' || activeTab === 'messages' || activeTab === 'impromptu-management') ? 'var(--glass)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontWeight: (activeTab === 'admin-tools' || activeTab === 'traffic-monitoring' || activeTab === 'setup-instructor' || activeTab === 'master-evaluation' || activeTab === 'user-management' || activeTab === 'feature-campaign' || activeTab === 'email-coach' || activeTab === 'email-history' || activeTab === 'messages' || activeTab === 'impromptu-management') ? '600' : '400',
+                fontSize: '0.85rem'
+              }}
+            >
+              <ShieldCheck size={16} />
+              Admin Tools
+            </button>
           )}
         </div>
       </footer>

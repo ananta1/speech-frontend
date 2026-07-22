@@ -84,6 +84,17 @@ const UploadVideo = ({ user, onUploadSuccess }) => {
                 throw new Error('Failed to upload file to storage');
             }
 
+            // 3. Automatically trigger speech analysis job
+            try {
+                await fetch(`${API_BASE_URL}/analyze-video`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, userId: user.id || user.userId })
+                });
+            } catch (analyzeErr) {
+                console.warn("Auto-trigger speech analysis error:", analyzeErr);
+            }
+
             setUploadStatus('success');
             if (onUploadSuccess) onUploadSuccess(key);
 

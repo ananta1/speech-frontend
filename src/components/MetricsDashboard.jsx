@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, BarChart2, TrendingUp, Award, Clock, Calendar, Video, Target, Sparkles, Filter, Search, ChevronRight, Activity, ArrowUpRight, CheckCircle2, Zap } from 'lucide-react';
+import { LineChart, BarChart2, TrendingUp, Award, Clock, Calendar, Video, Target, Sparkles, Filter, Search, ChevronRight, Activity, ArrowUpRight, CheckCircle2, Zap, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 
@@ -9,6 +9,105 @@ const MetricsDashboard = ({ user }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMetricDetail, setSelectedMetricDetail] = useState(null);
+  const [chartTab, setChartTab] = useState('all');
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [visibleSeries, setVisibleSeries] = useState({ studio: true, impromptu: true, prepared: true });
+  const [selectedSubMetric, setSelectedSubMetric] = useState('filler_words');
+  const [hoveredSubPoint, setHoveredSubPoint] = useState(null);
+
+  const subMetricsConfig = [
+    { id: 'filler_words', label: 'Filler Words', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
+    { id: 'introduction', label: 'Introduction (Opening)', color: '#38bdf8', bg: 'rgba(56,189,248,0.08)', border: 'rgba(56,189,248,0.25)' },
+    { id: 'conclusion', label: 'Conclusion', color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)' },
+    { id: 'pronunciation', label: 'Pronunciation', color: '#a855f7', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.25)' },
+    { id: 'fluency', label: 'Fluency & Delivery', color: '#ec4899', bg: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.25)' },
+    { id: 'grammar', label: 'Grammar', color: '#6366f1', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.25)' },
+    { id: 'body_language', label: 'Body Language', color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', border: 'rgba(14,165,233,0.25)' },
+    { id: 'improvisation', label: 'Improvisation', color: '#f43f5e', bg: 'rgba(244,63,94,0.08)', border: 'rgba(244,63,94,0.25)' },
+    { id: 'storytelling', label: 'Storytelling', color: '#14b8a6', bg: 'rgba(20,184,166,0.08)', border: 'rgba(20,184,166,0.25)' },
+    { id: 'audience_connection', label: 'Audience Connection', color: '#84cc16', bg: 'rgba(132,204,22,0.08)', border: 'rgba(132,204,22,0.25)' }
+  ];
+
+  const getSubMetricValue = (item, metricId) => {
+    if (!item || !item.metrics) return null;
+    const m = item.metrics;
+    switch (metricId) {
+      case 'filler_words':
+        return m.filler_words ?? m.fillerWords ?? null;
+      case 'introduction':
+        return m.introduction ?? m.introduction_score ?? m.opening ?? null;
+      case 'conclusion':
+        return m.conclusion ?? m.conclusion_score ?? null;
+      case 'pronunciation':
+        return m.pronunciation ?? m.pronunciation_score ?? null;
+      case 'fluency':
+        return m.fluency ?? m.delivery_metrics ?? m.delivery ?? null;
+      case 'grammar':
+        return m.grammar_metrics ?? m.grammar ?? null;
+      case 'body_language':
+        return m.body_language ?? m.bodyLanguage ?? null;
+      case 'improvisation':
+        return m.improvisation ?? null;
+      case 'storytelling':
+        return m.storytelling ?? null;
+      case 'audience_connection':
+        return m.audience_connection ?? m.audienceConnection ?? null;
+      default:
+        return null;
+    }
+  };
+
+  const getSpeechCategory = (m) => {
+    if (!m) return 'prepared';
+    const title = (m.speechTitle || m.videoTitle || m.title || '').toLowerCase();
+    const key = (m.videoKey || m.key || '').toLowerCase();
+    const type = (m.speechType || m.category || '').toLowerCase();
+
+    if (type === 'studio' || title.includes('studio') || key.includes('studio')) return 'studio';
+    if (type === 'impromptu' || title.includes('impromptu') || key.includes('impromptu')) return 'impromptu';
+    return 'prepared';
+  };
+
+  const getUserId = () => {
+    if (user?.id) return user.id;
+    if (user?.userId) return user.userId;
+    if (user?.email) return user.email;
+    try {
+      const stored = localStorage.getItem('speechUser');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.id || parsed.userId || parsed.email;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const formatSpeechTitle = (item) => {
+    if (!item) return 'Speech Practice';
+    let rawTitle = item.speechTitle || item.videoTitle || item.title;
+    if (rawTitle && rawTitle.toLowerCase() !== 'untitled' && rawTitle !== 'Video Speech Evaluation' && !rawTitle.toLowerCase().startsWith('untitled')) {
+      return rawTitle;
+    }
+
+    // Extract human-readable title from videoKey (e.g., uploads/user_id/1784563-Impromptu_Is_failure_a_prerequisite.mp4)
+    const rawKey = item.videoKey || item.key || '';
+    if (rawKey) {
+      let basename = rawKey.split('/').pop();
+      // Remove timestamp or ID numbers at start (e.g. 1784563- or 1784563_)
+      basename = basename.replace(/^\d+[-_]?/, '');
+      // Strip extensions (.mp4, .webm, .mov, .m4a, .json)
+      basename = basename.replace(/\.(mp4|webm|mov|m4a|avi|mkv|json)$/i, '');
+      // Replace underscores and hyphens with spaces
+      let cleaned = basename.replace(/[-_]/g, ' ').trim();
+      if (cleaned) {
+        return cleaned.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+    }
+
+    return 'Impromptu Speech Practice';
+  };
+
+  const [quotaInfo, setQuotaInfo] = useState(null);
 
   useEffect(() => {
     fetchMetrics();
@@ -16,8 +115,27 @@ const MetricsDashboard = ({ user }) => {
 
   const fetchMetrics = async () => {
     setLoading(true);
-    const userId = user?.id || user?.userId || localStorage.getItem('userId') || 'test-user';
+    const userId = getUserId();
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     try {
+      // 0. Fetch Quota Info
+      try {
+        const qRes = await fetch(`${API_BASE_URL}/get-speech-quota`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        if (qRes.ok) {
+          const qData = await qRes.json();
+          setQuotaInfo(qData);
+        }
+      } catch (qErr) {
+        console.warn("Could not fetch speech quota info:", qErr);
+      }
+
       // 1. Fetch from SpeechMetrics table
       const res = await fetch(`${API_BASE_URL}/get-speech-metrics`, {
         method: 'POST',
@@ -62,62 +180,18 @@ const MetricsDashboard = ({ user }) => {
         console.warn("Could not fetch student evaluations for metrics merge:", err);
       }
 
+      // Normalize all scores to 10.0 scale
+      fetched = fetched.map(m => {
+        let score = parseFloat(m.overallScore || m.score || 8.0);
+        if (score > 10) score = parseFloat((score / 10.0).toFixed(1));
+        return {
+          ...m,
+          overallScore: score.toFixed(1)
+        };
+      });
+
       // Sort by evaluatedAt descending
       fetched.sort((a, b) => new Date(b.evaluatedAt || 0) - new Date(a.evaluatedAt || 0));
-      
-      // If empty, generate helpful initial demonstration records
-      if (fetched.length === 0) {
-        fetched = [
-          {
-            userId,
-            videoKey: 'demo_1',
-            speechTitle: 'Keynote Speech Practice',
-            evaluatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-            overallScore: 8.8,
-            metrics: {
-              overallScore: 8.8,
-              introduction: 9.0,
-              bodyStructure: 8.5,
-              delivery: 8.7,
-              bodyLanguage: 8.2,
-              pronunciation: 9.1,
-              fluency: 8.6
-            },
-            deliveryData: { wordCount: 240, pauseCount: 3, fillerCount: 2 }
-          },
-          {
-            userId,
-            videoKey: 'demo_2',
-            speechTitle: 'Impromptu: Technology Trends',
-            evaluatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-            overallScore: 7.9,
-            metrics: {
-              overallScore: 7.9,
-              introduction: 8.0,
-              bodyStructure: 7.5,
-              delivery: 8.0,
-              bodyLanguage: 7.8,
-              pronunciation: 8.2,
-              fluency: 7.9
-            },
-            deliveryData: { wordCount: 180, pauseCount: 5, fillerCount: 4 }
-          },
-          {
-            userId,
-            videoKey: 'demo_3',
-            speechTitle: 'Speech Studio: Syllable Stress',
-            evaluatedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
-            overallScore: 8.4,
-            metrics: {
-              overallScore: 8.4,
-              pronunciation: 8.8,
-              fluency: 8.0,
-              syllableStress: 8.4
-            },
-            deliveryData: { wordCount: 65, pauseCount: 1, fillerCount: 0 }
-          }
-        ];
-      }
 
       setMetricsList(fetched);
     } catch (e) {
@@ -169,10 +243,6 @@ const MetricsDashboard = ({ user }) => {
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem 1rem 4rem' }}>
       {/* Header Banner */}
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.9rem', borderRadius: '999px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', marginBottom: '0.5rem' }}>
-          <Activity size={16} color="#38bdf8" />
-          <span style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Speech Analytics Hub</span>
-        </div>
         <h1 className="gradient-text" style={{ fontSize: '2.4rem', fontWeight: '800', margin: '0 0 0.5rem 0' }}>Your Speech Performance & Metrics</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '650px', margin: '0 auto' }}>
           Track rating metrics, pronunciation accuracy, delivery progress, and score evolution across all your practice sessions.
@@ -232,53 +302,596 @@ const MetricsDashboard = ({ user }) => {
         </div>
       </div>
 
-      {/* Rating Trends & Progress Chart Panel */}
+      {/* Monthly Practice Quotas Banner (Option 3) */}
+      {quotaInfo && (
+        <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', border: '1px solid var(--glass-border)', marginBottom: '2rem', background: 'rgba(0, 0, 0, 0.25)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <ShieldCheck size={22} color="#38bdf8" />
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                  Monthly Practice Quotas ({quotaInfo.tier} Plan)
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Feature-specific monthly practice limits for your account.
+                </p>
+              </div>
+            </div>
+            {!quotaInfo.isPro && (
+              <a href="#upgrade" onClick={(e) => { e.preventDefault(); alert("Click Upgrade on the top navbar or Profile to upgrade to Pro for increased monthly limits!"); }} style={{ padding: '0.45rem 0.95rem', borderRadius: '0.65rem', background: 'linear-gradient(135deg, #a855f7, #38bdf8)', color: '#fff', fontSize: '0.8rem', fontWeight: '800', textDecoration: 'none', boxShadow: '0 4px 12px rgba(168,85,247,0.3)' }}>
+                ⚡ Upgrade to Pro
+              </a>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            {/* Prepared Speeches */}
+            <div style={{ padding: '0.85rem 1rem', borderRadius: '0.85rem', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: '800', textTransform: 'uppercase' }}>Prepared Speeches</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#22c55e', marginTop: '0.2rem' }}>
+                {quotaInfo.counts.prepared} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>/ {quotaInfo.maxLimits.prepared}</span>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>evaluations this month</div>
+            </div>
+
+            {/* Impromptu Speaking */}
+            <div style={{ padding: '0.85rem 1rem', borderRadius: '0.85rem', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: '800', textTransform: 'uppercase' }}>Impromptu Speaking</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8', marginTop: '0.2rem' }}>
+                {quotaInfo.counts.impromptu} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>/ {quotaInfo.maxLimits.impromptu}</span>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>sessions this month</div>
+            </div>
+
+            {/* Speech Studio */}
+            <div style={{ padding: '0.85rem 1rem', borderRadius: '0.85rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: '800', textTransform: 'uppercase' }}>Speech Studio</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ef4444', marginTop: '0.2rem' }}>
+                {quotaInfo.isPro ? 'Unlimited' : `${quotaInfo.counts.studio} / ${quotaInfo.maxLimits.studio}`}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>drills this month</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Trends & Multi-Category Line Graph Panel */}
       <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '1.25rem', border: '1px solid var(--glass-border)', marginBottom: '2rem' }}>
+        
+        {/* Graph Header & Category View Switcher */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
             <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 0.25rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <BarChart2 size={22} color="#38bdf8" /> Speech Score Evolution Trend
+              <TrendingUp size={22} color="#38bdf8" /> Speech Score Evolution Trend
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
-              Chronological progress tracking across your evaluated speeches and studio sessions.
+              Performance line graph tracking rating trends across Studio, Impromptu, and Prepared speeches.
             </p>
+          </div>
+
+          {/* Category View Tabs */}
+          <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.25)', padding: '0.3rem', borderRadius: '0.75rem', border: '1px solid var(--glass-border)' }}>
+            {[
+              { id: 'all', label: 'All Combined' },
+              { id: 'studio', label: 'Speech Studio', color: '#ef4444' },
+              { id: 'impromptu', label: 'Impromptu', color: '#38bdf8' },
+              { id: 'prepared', label: 'Prepared', color: '#22c55e' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setChartTab(tab.id)}
+                style={{
+                  padding: '0.4rem 0.85rem', borderRadius: '0.55rem', border: 'none',
+                  fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                  background: chartTab === tab.id ? (tab.color || 'var(--accent-primary)') : 'transparent',
+                  color: chartTab === tab.id ? '#ffffff' : 'var(--text-secondary)',
+                  boxShadow: chartTab === tab.id ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Visual Progress Bars for recent speeches */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {metricsList.slice(0, 5).map((m, idx) => {
-            const scoreVal = parseFloat(m.overallScore || 8.0);
-            const percentWidth = Math.min(100, Math.max(10, (scoreVal / 10) * 100));
-            const color = getScoreBadgeColor(scoreVal);
+        {/* Category Averages Summary Bar */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+          {[
+            { key: 'studio', label: 'Speech Studio', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)' },
+            { key: 'impromptu', label: 'Impromptu Speaking', color: '#38bdf8', bg: 'rgba(56,189,248,0.08)', border: 'rgba(56,189,248,0.25)' },
+            { key: 'prepared', label: 'Prepared Speeches', color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)' }
+          ].map(cat => {
+            const catSpeeches = metricsList.filter(m => getSpeechCategory(m) === cat.key);
+            const count = catSpeeches.length;
+            const avg = count > 0
+              ? (catSpeeches.reduce((acc, m) => acc + parseFloat(m.overallScore || 0), 0) / count).toFixed(1)
+              : 'N/A';
+
             return (
-              <div key={idx} style={{ padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.25)', borderRadius: '0.85rem', border: '1px solid var(--glass-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                    {m.speechTitle || `Speech #${idx + 1}`}
+              <div
+                key={cat.key}
+                onClick={() => setVisibleSeries(prev => ({ ...prev, [cat.key]: !prev[cat.key] }))}
+                style={{
+                  padding: '0.85rem 1.1rem', borderRadius: '0.85rem',
+                  background: cat.bg, border: `1px solid ${cat.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer', opacity: visibleSeries[cat.key] ? 1 : 0.45,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: cat.color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {cat.label}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      {new Date(m.evaluatedAt).toLocaleDateString()}
-                    </span>
-                    <span style={{ padding: '0.25rem 0.65rem', borderRadius: '0.5rem', fontWeight: '800', fontSize: '0.88rem', background: color.bg, color: color.text, border: `1px solid ${color.border}` }}>
-                      {scoreVal} / 10
-                    </span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                    {count} Sessions Evaluated
                   </div>
                 </div>
-                {/* Progress Bar Track */}
-                <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentWidth}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    style={{ height: '100%', borderRadius: '999px', background: `linear-gradient(90deg, ${color.text}, #a855f7)` }}
-                  />
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: '900', color: cat.color }}>
+                    {avg}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                    avg score
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {/* Interactive SVG Line Graph Canvas */}
+        {(() => {
+          // Sort chronologically (oldest first for line graph)
+          const chronological = [...metricsList].sort((a, b) => new Date(a.evaluatedAt || 0) - new Date(b.evaluatedAt || 0));
+
+          if (chronological.length === 0) {
+            return (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <Activity size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: '600' }}>No evaluation score points logged yet.</p>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem' }}>Practice in Speech Studio or record an Impromptu Speech to build your line graph!</p>
+              </div>
+            );
+          }
+
+          const svgWidth = 800;
+          const svgHeight = 260;
+          const padding = { top: 30, right: 30, bottom: 40, left: 45 };
+          const graphW = svgWidth - padding.left - padding.right;
+          const graphH = svgHeight - padding.top - padding.bottom;
+
+          // Categorize series
+          const categories = ['studio', 'impromptu', 'prepared'];
+          const catColors = { studio: '#ef4444', impromptu: '#38bdf8', prepared: '#22c55e' };
+
+          const seriesData = {};
+          categories.forEach(cat => {
+            let catItems = chronological.filter(m => getSpeechCategory(m) === cat);
+            if (chartTab !== 'all' && chartTab !== cat) {
+              catItems = [];
+            }
+            if (!visibleSeries[cat]) {
+              catItems = [];
+            }
+
+            seriesData[cat] = catItems.map((item, idx) => {
+              const score = parseFloat(item.overallScore || 8.0);
+              // Calculate X based on chronological position across all items
+              const totalItems = chronological.length;
+              const globalIdx = chronological.findIndex(x => x === item);
+              const x = padding.left + (totalItems > 1 ? (globalIdx / (totalItems - 1)) * graphW : graphW / 2);
+              const y = padding.top + graphH - (score / 10) * graphH;
+              return { x, y, score, item, category: cat };
+            });
+          });
+
+          const buildSvgPath = (points) => {
+            if (!points || points.length === 0) return '';
+            if (points.length === 1) return `M ${points[0].x},${points[0].y} L ${points[0].x},${points[0].y}`;
+            let p = `M ${points[0].x},${points[0].y}`;
+            for (let i = 0; i < points.length - 1; i++) {
+              const curr = points[i];
+              const next = points[i + 1];
+              const ctrlX = (curr.x + next.x) / 2;
+              p += ` C ${ctrlX},${curr.y} ${ctrlX},${next.y} ${next.x},${next.y}`;
+            }
+            return p;
+          };
+
+          const buildAreaPath = (points) => {
+            if (!points || points.length === 0) return '';
+            const linePath = buildSvgPath(points);
+            const bottomY = padding.top + graphH;
+            return `${linePath} L ${points[points.length - 1].x},${bottomY} L ${points[0].x},${bottomY} Z`;
+          };
+
+          return (
+            <div style={{ position: 'relative', width: '100%', background: 'rgba(0,0,0,0.3)', borderRadius: '1rem', padding: '1rem', border: '1px solid var(--glass-border)' }}>
+              <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="studioGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="impromptuGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="preparedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#22c55e" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Y-Axis Horizontal Gridlines & Labels */}
+                {[10, 8, 6, 4, 2, 0].map((val) => {
+                  const y = padding.top + graphH - (val / 10) * graphH;
+                  return (
+                    <g key={val}>
+                      <line
+                        x1={padding.left}
+                        y1={y}
+                        x2={svgWidth - padding.right}
+                        y2={y}
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeDasharray={val === 0 || val === 10 ? "none" : "4 4"}
+                      />
+                      <text
+                        x={padding.left - 10}
+                        y={y + 4}
+                        fill="rgba(255,255,255,0.45)"
+                        fontSize="10"
+                        fontWeight="600"
+                        textAnchor="end"
+                      >
+                        {val}.0
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* X-Axis Date Labels */}
+                {chronological.map((m, idx) => {
+                  if (chronological.length > 8 && idx % Math.ceil(chronological.length / 6) !== 0 && idx !== chronological.length - 1) {
+                    return null;
+                  }
+                  const x = padding.left + (chronological.length > 1 ? (idx / (chronological.length - 1)) * graphW : graphW / 2);
+                  const dateStr = new Date(m.evaluatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  return (
+                    <text
+                      key={idx}
+                      x={x}
+                      y={svgHeight - 12}
+                      fill="rgba(255,255,255,0.45)"
+                      fontSize="10"
+                      fontWeight="600"
+                      textAnchor="middle"
+                    >
+                      {dateStr}
+                    </text>
+                  );
+                })}
+
+                {/* Render Series Areas & Curved Lines */}
+                {categories.map(cat => {
+                  const points = seriesData[cat];
+                  if (!points || points.length === 0) return null;
+                  const color = catColors[cat];
+
+                  return (
+                    <g key={cat}>
+                      {/* Gradient Fill Area */}
+                      <path
+                        d={buildAreaPath(points)}
+                        fill={`url(#${cat}Grad)`}
+                      />
+
+                      {/* Smooth Line Path */}
+                      <path
+                        d={buildSvgPath(points)}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ filter: `drop-shadow(0 4px 8px ${color}66)` }}
+                      />
+
+                      {/* Interactive Data Point Nodes */}
+                      {points.map((pt, idx) => (
+                        <g key={idx}>
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r="6"
+                            fill="#ffffff"
+                            stroke={color}
+                            strokeWidth="3"
+                            style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                            onMouseEnter={() => setHoveredPoint(pt)}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                        </g>
+                      ))}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Hover Tooltip Popup */}
+              {hoveredPoint && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${(hoveredPoint.x / svgWidth) * 100}%`,
+                    top: `${(hoveredPoint.y / svgHeight) * 100}%`,
+                    transform: 'translate(-50%, -115%)',
+                    background: '#0f172a',
+                    border: `1.5px solid ${catColors[hoveredPoint.category]}`,
+                    borderRadius: '0.75rem',
+                    padding: '0.65rem 0.9rem',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                    minWidth: '170px'
+                  }}
+                >
+                  <div style={{ fontSize: '0.72rem', color: catColors[hoveredPoint.category], fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {hoveredPoint.category === 'studio' ? 'Speech Studio' : hoveredPoint.category === 'impromptu' ? 'Impromptu Speaking' : 'Prepared Speech'}
+                  </div>
+                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: '700', marginTop: '0.2rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {formatSpeechTitle(hoveredPoint.item)}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      {new Date(hoveredPoint.item.evaluatedAt).toLocaleDateString()}
+                    </span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: '900', color: catColors[hoveredPoint.category] }}>
+                      {hoveredPoint.score} / 10
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Granular Dimension Metrics Line Graph Panel */}
+      <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '1.25rem', border: '1px solid var(--glass-border)', marginBottom: '2rem' }}>
+        
+        {/* Header */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: '0 0 0.25rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={22} color="#a855f7" /> Granular Speech Dimension Trends
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
+            Analyze score trajectory over time for specific dimensions like filler words, opening, conclusion, pronunciation, and more.
+          </p>
+        </div>
+
+        {/* Sub-Metrics Pill Selector */}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          {subMetricsConfig.map(metric => {
+            const count = metricsList.filter(item => getSubMetricValue(item, metric.id) !== null).length;
+            const isSelected = selectedSubMetric === metric.id;
+
+            return (
+              <button
+                key={metric.id}
+                onClick={() => setSelectedSubMetric(metric.id)}
+                style={{
+                  padding: '0.45rem 0.9rem',
+                  borderRadius: '0.75rem',
+                  border: isSelected ? `1px solid ${metric.color}` : '1px solid var(--glass-border)',
+                  background: isSelected ? metric.bg : 'rgba(255, 255, 255, 0.02)',
+                  color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  transition: 'all 0.2s',
+                  boxShadow: isSelected ? `0 2px 10px rgba(0, 0, 0, 0.15)` : 'none'
+                }}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: metric.color }} />
+                {metric.label}
+                <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Graph Display */}
+        {(() => {
+          const chronological = [...metricsList].sort((a, b) => new Date(a.evaluatedAt || 0) - new Date(b.evaluatedAt || 0));
+          const validPoints = chronological
+            .map((item, idx) => {
+              const val = getSubMetricValue(item, selectedSubMetric);
+              if (val === null || val === undefined) return null;
+              const score = parseFloat(val);
+              const normalizedScore = score > 10 ? score / 10.0 : score;
+              return { item, score: normalizedScore, originalIdx: idx };
+            })
+            .filter(pt => pt !== null);
+
+          if (validPoints.length === 0) {
+            return (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.15)', borderRadius: '1rem' }}>
+                <Activity size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>No evaluation points for "{subMetricsConfig.find(m => m.id === selectedSubMetric)?.label}" yet.</p>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem' }}>Upload or record speeches containing full evaluations to view trends here.</p>
+              </div>
+            );
+          }
+
+          const svgWidth = 800;
+          const svgHeight = 220;
+          const padding = { top: 25, right: 30, bottom: 35, left: 45 };
+          const graphW = svgWidth - padding.left - padding.right;
+          const graphH = svgHeight - padding.top - padding.bottom;
+
+          const currentMetricColor = subMetricsConfig.find(m => m.id === selectedSubMetric)?.color || '#38bdf8';
+
+          const seriesPoints = validPoints.map((pt, i) => {
+            const x = padding.left + (validPoints.length > 1 ? (i / (validPoints.length - 1)) * graphW : graphW / 2);
+            const y = padding.top + graphH - (pt.score / 10) * graphH;
+            return { x, y, score: pt.score, item: pt.item };
+          });
+
+          const buildSvgPath = (pts) => {
+            if (!pts || pts.length === 0) return '';
+            if (pts.length === 1) return `M ${pts[0].x},${pts[0].y} L ${pts[0].x},${pts[0].y}`;
+            let p = `M ${pts[0].x},${pts[0].y}`;
+            for (let i = 0; i < pts.length - 1; i++) {
+              const curr = pts[i];
+              const next = pts[i + 1];
+              const ctrlX = (curr.x + next.x) / 2;
+              p += ` C ${ctrlX},${curr.y} ${ctrlX},${next.y} ${next.x},${next.y}`;
+            }
+            return p;
+          };
+
+          const buildAreaPath = (pts) => {
+            if (!pts || pts.length === 0) return '';
+            const linePath = buildSvgPath(pts);
+            const bottomY = padding.top + graphH;
+            return `${linePath} L ${pts[pts.length - 1].x},${bottomY} L ${pts[0].x},${bottomY} Z`;
+          };
+
+          return (
+            <div style={{ position: 'relative', width: '100%', background: 'rgba(0,0,0,0.3)', borderRadius: '1rem', padding: '1rem', border: '1px solid var(--glass-border)' }}>
+              <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="subMetricGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={currentMetricColor} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={currentMetricColor} stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Y-Axis Horizontal Gridlines */}
+                {[10, 8, 6, 4, 2, 0].map((val) => {
+                  const y = padding.top + graphH - (val / 10) * graphH;
+                  return (
+                    <g key={val}>
+                      <line
+                        x1={padding.left}
+                        y1={y}
+                        x2={svgWidth - padding.right}
+                        y2={y}
+                        stroke="rgba(255,255,255,0.06)"
+                        strokeDasharray={val === 0 || val === 10 ? "none" : "4 4"}
+                      />
+                      <text
+                        x={padding.left - 10}
+                        y={y + 4}
+                        fill="rgba(255,255,255,0.4)"
+                        fontSize="9"
+                        fontWeight="600"
+                        textAnchor="end"
+                      >
+                        {val}.0
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* X-Axis Date Labels */}
+                {seriesPoints.map((pt, idx) => {
+                  if (seriesPoints.length > 8 && idx % Math.ceil(seriesPoints.length / 6) !== 0 && idx !== seriesPoints.length - 1) {
+                    return null;
+                  }
+                  const dateStr = new Date(pt.item.evaluatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  return (
+                    <text
+                      key={idx}
+                      x={pt.x}
+                      y={svgHeight - 8}
+                      fill="rgba(255,255,255,0.4)"
+                      fontSize="9"
+                      fontWeight="600"
+                      textAnchor="middle"
+                    >
+                      {dateStr}
+                    </text>
+                  );
+                })}
+
+                {/* Area Gradient Fill */}
+                <path
+                  d={buildAreaPath(seriesPoints)}
+                  fill="url(#subMetricGrad)"
+                />
+
+                {/* Curved Line Path */}
+                <path
+                  d={buildSvgPath(seriesPoints)}
+                  fill="none"
+                  stroke={currentMetricColor}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ filter: `drop-shadow(0 3px 6px ${currentMetricColor}55)` }}
+                />
+
+                {/* Interactive Points */}
+                {seriesPoints.map((pt, idx) => (
+                  <g key={idx}>
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r="5"
+                      fill="#ffffff"
+                      stroke={currentMetricColor}
+                      strokeWidth="2.5"
+                      style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={() => setHoveredSubPoint(pt)}
+                      onMouseLeave={() => setHoveredSubPoint(null)}
+                    />
+                  </g>
+                ))}
+              </svg>
+
+              {/* Hover Tooltip Popup */}
+              {hoveredSubPoint && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${(hoveredSubPoint.x / svgWidth) * 100}%`,
+                    top: `${(hoveredSubPoint.y / svgHeight) * 100}%`,
+                    transform: 'translate(-50%, -115%)',
+                    background: '#0f172a',
+                    border: `1.5px solid ${currentMetricColor}`,
+                    borderRadius: '0.75rem',
+                    padding: '0.65rem 0.9rem',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                    minWidth: '175px'
+                  }}
+                >
+                  <div style={{ fontSize: '0.72rem', color: currentMetricColor, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {subMetricsConfig.find(m => m.id === selectedSubMetric)?.label}
+                  </div>
+                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: '700', marginTop: '0.2rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {formatSpeechTitle(hoveredSubPoint.item)}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      {new Date(hoveredSubPoint.item.evaluatedAt).toLocaleDateString()}
+                    </span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: '900', color: currentMetricColor }}>
+                      {hoveredSubPoint.score.toFixed(1)} / 10
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Main Detailed Metrics Table */}
@@ -374,7 +987,7 @@ const MetricsDashboard = ({ user }) => {
                             <Target size={18} color="#38bdf8" />
                           </div>
                           <div>
-                            <div>{item.speechTitle || item.videoKey}</div>
+                            <div>{formatSpeechTitle(item)}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
                               ID: {item.videoKey}
                             </div>
@@ -458,7 +1071,7 @@ const MetricsDashboard = ({ user }) => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                  {selectedMetricDetail.speechTitle || 'Speech Breakdown'}
+                  {formatSpeechTitle(selectedMetricDetail)}
                 </h3>
                 <span style={{ padding: '0.35rem 0.75rem', borderRadius: '0.5rem', fontWeight: '900', fontSize: '0.95rem', ...getScoreBadgeColor(selectedMetricDetail.overallScore) }}>
                   {selectedMetricDetail.overallScore} / 10

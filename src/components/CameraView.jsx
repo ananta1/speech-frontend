@@ -199,7 +199,7 @@ const CameraView = ({ user, onUploadSuccess }) => {
                 throw new Error(errData.message || 'Failed to get upload URL');
             }
 
-            const { uploadUrl } = await res.json();
+            const { uploadUrl, key } = await res.json();
 
             const uploadRes = await fetch(uploadUrl, {
                 method: 'PUT',
@@ -209,10 +209,21 @@ const CameraView = ({ user, onUploadSuccess }) => {
 
             if (!uploadRes.ok) throw new Error('Failed to upload video content');
 
+            // Automatically trigger speech analysis job
+            try {
+                await fetch(`${API_BASE_URL}/analyze-video`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, userId: user.id || user.userId })
+                });
+            } catch (analyzeErr) {
+                console.warn("Auto-trigger speech analysis error:", analyzeErr);
+            }
+
             if (onUploadSuccess) {
-                onUploadSuccess();
+                onUploadSuccess(key);
             } else {
-                alert("Speech uploaded successfully!");
+                alert("Speech uploaded! Analysis job started automatically.");
                 resetCapture();
             }
         } catch (err) {

@@ -128,6 +128,55 @@ const SpeechStudio = ({ user }) => {
     const mediaStreamRef = useRef(null);
     const recognitionRef = useRef(null);
     const spokenTranscriptRef = useRef('');
+    const hoverTimerRef = useRef(null);
+    const [popupOpenedBy, setPopupOpenedBy] = useState(null); // 'hover' | 'click' | null
+    const initialMousePos = useRef({ x: 0, y: 0 });
+
+    const handleWordMouseEnter = (item, e) => {
+        if (popupOpenedBy === 'click') return;
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        initialMousePos.current = { x: e.clientX, y: e.clientY };
+        setSelectedWord(item);
+        setPopupOpenedBy('hover');
+    };
+
+    const handleWordMouseLeave = () => {
+        if (popupOpenedBy === 'click') return;
+        hoverTimerRef.current = setTimeout(() => {
+            setSelectedWord(null);
+            setPopupOpenedBy(null);
+        }, 300);
+    };
+
+    const handleCardMouseEnter = () => {
+        if (popupOpenedBy === 'click') return;
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+
+    const handleCardMouseLeave = () => {
+        if (popupOpenedBy === 'click') return;
+        handleWordMouseLeave();
+    };
+
+    useEffect(() => {
+        if (!selectedWord || popupOpenedBy !== 'hover') return;
+
+        const handleGlobalMouseMove = (e) => {
+            const dx = e.clientX - initialMousePos.current.x;
+            const dy = e.clientY - initialMousePos.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 25) {
+                setSelectedWord(null);
+                setPopupOpenedBy(null);
+            }
+        };
+
+        window.addEventListener('mousemove', handleGlobalMouseMove);
+        return () => {
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+        };
+    }, [selectedWord, popupOpenedBy]);
 
     // Active Target Text
     const activeText = isCustom ? (customText.trim() || 'Please enter a sentence to practice.') : selectedPreset.text;
@@ -288,9 +337,24 @@ const SpeechStudio = ({ user }) => {
         }
     };
 
+    const getUserId = () => {
+        if (user?.id) return user.id;
+        if (user?.userId) return user.userId;
+        if (user?.email) return user.email;
+        try {
+            const stored = localStorage.getItem('speechUser');
+            if (stored) {
+                const p = JSON.parse(stored);
+                return p.id || p.userId || p.email;
+            }
+        } catch (e) {}
+        return 'anonymous';
+    };
+
     // Analyze Speech & generate payload
     const analyzeSpokenSpeech = async (targetText) => {
         const capturedSpeech = spokenTranscriptRef.current.trim();
+        const currentUserId = getUserId();
         
         // 1. Check for speech mismatch if audio was captured
         if (capturedSpeech) {
@@ -322,7 +386,7 @@ const SpeechStudio = ({ user }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user?.id || user?.userId || 'anonymous',
+                    userId: currentUserId,
                     targetText: targetText,
                     spokenText: capturedSpeech || targetText
                 })
@@ -389,12 +453,14 @@ const SpeechStudio = ({ user }) => {
         const fluencyScore = Math.min(100, Math.max(60, overallAccuracy - 4 + Math.floor(Math.random() * 8)));
         const compositeScore = Math.round((overallAccuracy * 0.6) + (fluencyScore * 0.4));
 
-        setAnalysisResult({
+        const fallbackAnalysis = {
             overall_score: compositeScore,
             pronunciation_score: overallAccuracy,
             fluency_score: fluencyScore,
             words: mappedWords
-        });
+        };
+
+        setAnalysisResult(fallbackAnalysis);
     };
 
     useEffect(() => {
@@ -411,130 +477,152 @@ const SpeechStudio = ({ user }) => {
     };
 
     return (
-        <div style={{ width: '100%', maxWidth: '98%', margin: '0 auto', padding: '0.25rem 0.5rem 1rem' }}>
-            {/* Header Title Banner */}
-            <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 1.1rem', borderRadius: '999px', background: 'rgba(239,68,68,0.14)', border: '1.5px solid rgba(239,68,68,0.45)', marginBottom: '0.3rem' }}>
-                    <Sparkles size={16} color="#ef4444" />
-                    <span style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: '900', letterSpacing: '0.75px', textTransform: 'uppercase' }}>Speech Studio</span>
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '850px', margin: '0 auto', lineHeight: '1.45', fontWeight: '500' }}>
-                    Select or enter target text in <strong style={{ color: '#ef4444', fontWeight: '900' }}>Zone A</strong> → Record your speech in <strong style={{ color: '#ef4444', fontWeight: '900' }}>Zone B</strong> → Review interactive feedback map & scores in <strong style={{ color: '#ef4444', fontWeight: '900' }}>Zone C</strong>
-                </p>
-            </div>
-
+        <div style={{ width: '100%', maxWidth: '98%', margin: '0 auto', padding: '2.25rem 0.5rem 1rem' }}>
             {/* Main Studio 3-Column Horizontal Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', alignItems: 'stretch', width: '100%' }}>
 
                 {/* ═══ COLUMN 1 / ZONE A: THE REFERENCE TARGET ═══ */}
-                <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderRadius: '1.25rem', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '420px' }}>
-                    <div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginBottom: '1rem' }}>
-                            <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center' }}>
-                                Zone A: Reference Target
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    {/* Zone A Description Above Box (Light Blue) */}
+                    <div style={{
+                        padding: '0.75rem 1rem', background: '#f0f9ff', borderTopLeftRadius: '1.25rem', borderTopRightRadius: '1.25rem',
+                        border: '1px solid rgba(56, 189, 248, 0.4)', borderBottom: 'none',
+                        textAlign: 'center', fontSize: '0.95rem', color: '#0f172a', lineHeight: '1.5', fontWeight: '500'
+                    }}>
+                        <strong style={{ color: '#0284c7', fontWeight: '900' }}>Zone A (Reference Target):</strong> Select preset sentences or enter custom text to practice, choose voice models (Female/Male), and listen to native reference audio.
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: '1.25rem', borderBottomRightRadius: '1.25rem', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, minHeight: '420px' }}>
+                        <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', letterSpacing: '0.5px', textAlign: 'center' }}>
+                                    Zone A: Reference Target
+                                </div>
+
+                                {/* Model Voice Selector */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.04)', padding: '0.25rem 0.5rem', borderRadius: '0.6rem', border: '1px solid var(--glass-border)' }}>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Voice:</span>
+                                    <div style={{ display: 'flex', gap: '0.2rem' }}>
+                                        <button
+                                            onClick={() => setVoiceGender('female')}
+                                            style={{
+                                                padding: '0.25rem 0.6rem', borderRadius: '0.4rem', border: 'none',
+                                                fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                                                background: voiceGender === 'female' ? 'var(--accent-primary)' : 'transparent',
+                                                color: voiceGender === 'female' ? '#fff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            Female (Ava)
+                                        </button>
+                                        <button
+                                            onClick={() => setVoiceGender('male')}
+                                            style={{
+                                                padding: '0.25rem 0.6rem', borderRadius: '0.4rem', border: 'none',
+                                                fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                                                background: voiceGender === 'male' ? 'var(--accent-primary)' : 'transparent',
+                                                color: voiceGender === 'male' ? '#fff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            Male (Andrew)
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Model Voice Selector */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.04)', padding: '0.25rem 0.5rem', borderRadius: '0.6rem', border: '1px solid var(--glass-border)' }}>
-                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Voice:</span>
-                                <div style={{ display: 'flex', gap: '0.2rem' }}>
+                            {/* Preset Dropdown or Input Choice */}
+                            <div style={{ marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                     <button
-                                        onClick={() => setVoiceGender('female')}
+                                        onClick={() => setIsCustom(false)}
                                         style={{
-                                            padding: '0.25rem 0.6rem', borderRadius: '0.4rem', border: 'none',
+                                            flex: 1, padding: '0.35rem', borderRadius: '0.5rem', border: 'none',
                                             fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
-                                            background: voiceGender === 'female' ? 'var(--accent-primary)' : 'transparent',
-                                            color: voiceGender === 'female' ? '#fff' : 'var(--text-secondary)'
+                                            background: !isCustom ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
+                                            color: !isCustom ? '#fff' : 'var(--text-secondary)'
                                         }}
                                     >
-                                        Female (Ava)
+                                        Presets
                                     </button>
                                     <button
-                                        onClick={() => setVoiceGender('male')}
+                                        onClick={() => setIsCustom(true)}
                                         style={{
-                                            padding: '0.25rem 0.6rem', borderRadius: '0.4rem', border: 'none',
+                                            flex: 1, padding: '0.35rem', borderRadius: '0.5rem', border: 'none',
                                             fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
-                                            background: voiceGender === 'male' ? 'var(--accent-primary)' : 'transparent',
-                                            color: voiceGender === 'male' ? '#fff' : 'var(--text-secondary)'
+                                            background: isCustom ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
+                                            color: isCustom ? '#fff' : 'var(--text-secondary)'
                                         }}
                                     >
-                                        Male (Andrew)
+                                        Custom Text
                                     </button>
+                                </div>
+
+                                {!isCustom ? (
+                                    <select
+                                        value={selectedPreset?.text || ''}
+                                        onChange={(e) => {
+                                            const found = PRESET_SENTENCES.find(p => p.text === e.target.value);
+                                            if (found) setSelectedPreset(found);
+                                        }}
+                                        style={{
+                                            width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.6rem',
+                                            background: '#ffffff', color: '#0f172a',
+                                            border: '1px solid rgba(0,0,0,0.15)', fontSize: '0.85rem', outline: 'none',
+                                            fontWeight: '600'
+                                        }}
+                                    >
+                                        {PRESET_SENTENCES.map((s, idx) => (
+                                            <option key={idx} value={s.text}>{s.title}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <textarea
+                                        value={customText}
+                                        onChange={(e) => setCustomText(e.target.value)}
+                                        placeholder="Type custom sentence or paragraph..."
+                                        rows={3}
+                                        style={{
+                                            width: '100%', padding: '0.6rem 0.8rem', borderRadius: '0.6rem',
+                                            background: '#ffffff', color: '#0f172a',
+                                            border: '1px solid rgba(0,0,0,0.15)', fontSize: '0.85rem', outline: 'none',
+                                            resize: 'none', fontFamily: 'inherit', fontWeight: '500'
+                                        }}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Reference Text Card Display */}
+                            <div style={{
+                                padding: '0.85rem', borderRadius: '0.8rem', background: '#ffffff',
+                                border: '1px solid rgba(0,0,0,0.1)', marginBottom: '1rem',
+                                minHeight: '90px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                            }}>
+                                <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.3rem' }}>
+                                    TARGET SENTENCE
+                                </div>
+                                <div style={{ fontSize: '0.92rem', color: '#0f172a', fontWeight: '600', lineHeight: '1.45' }}>
+                                    "{activeText}"
                                 </div>
                             </div>
                         </div>
 
-                        {/* Preset Sentence Switcher */}
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                            {PRESET_SENTENCES.map(p => (
-                                <button
-                                    key={p.id}
-                                    onClick={() => { setIsCustom(false); setSelectedPreset(p); }}
-                                    style={{
-                                        padding: '0.35rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: '600',
-                                        cursor: 'pointer', transition: 'all 0.2s',
-                                        background: (!isCustom && selectedPreset.id === p.id) ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)',
-                                        color: (!isCustom && selectedPreset.id === p.id) ? '#38bdf8' : 'var(--text-secondary)',
-                                        border: (!isCustom && selectedPreset.id === p.id) ? '1px solid rgba(56,189,248,0.4)' : '1px solid var(--glass-border)'
-                                    }}
-                                >
-                                    {p.title}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setIsCustom(true)}
-                                style={{
-                                    padding: '0.35rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: '600',
-                                    cursor: 'pointer', transition: 'all 0.2s',
-                                    background: isCustom ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.03)',
-                                    color: isCustom ? '#a855f7' : 'var(--text-secondary)',
-                                    border: isCustom ? '1px solid rgba(168,85,247,0.4)' : '1px solid var(--glass-border)'
-                                }}
-                            >
-                                + Custom
-                            </button>
-                        </div>
-
-                        {/* Custom Text Entry Input */}
-                        {isCustom && (
-                            <div style={{ marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: '900', marginBottom: '0.35rem', letterSpacing: '0.5px' }}>TYPE YOUR OWN PRACTICE SENTENCE:</div>
-                                <textarea
-                                    value={customText}
-                                    onChange={(e) => setCustomText(e.target.value)}
-                                    placeholder="Type or paste any sentence you want to practice..."
-                                    rows={2}
-                                    style={{
-                                        width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem',
-                                        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(168,85,247,0.4)',
-                                        color: 'var(--text-primary)', fontSize: '1rem', outline: 'none', resize: 'vertical',
-                                        fontFamily: 'inherit', lineHeight: '1.4'
-                                    }}
-                                />
-                            </div>
-                        )}
-
-                        {/* Target Sentence Display Card + Listen Button */}
-                        <div style={{
-                            padding: '1.1rem 1.25rem', background: 'rgba(0,0,0,0.25)', borderRadius: '0.85rem',
-                            border: '1px solid rgba(255,255,255,0.08)', marginBottom: '1rem'
-                        }}>
-                            <div style={{ fontSize: '1.15rem', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.5', marginBottom: '0.75rem' }}>
-                                "{activeText}"
-                            </div>
+                        {/* Action Buttons: Native Audio Player */}
+                        <div>
                             <button
                                 onClick={() => speakText(activeText)}
-                                disabled={isPlayingReference || !activeText.trim()}
+                                disabled={!activeText.trim() || isPlayingReference}
                                 style={{
-                                    width: '75%', margin: '0 auto', padding: '0.6rem 1rem', borderRadius: '0.65rem',
-                                    background: isPlayingReference ? 'rgba(168,85,247,0.3)' : 'var(--accent-gradient)',
-                                    color: '#fff', border: 'none', fontWeight: '700', fontSize: '0.85rem',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                    width: '100%', padding: '0.75rem', borderRadius: '0.7rem', border: 'none',
+                                    background: isPlayingReference
+                                        ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                                        : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                                    color: '#fff', fontSize: '0.88rem', fontWeight: '800',
+                                    cursor: (!activeText.trim()) ? 'not-allowed' : 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
                                     boxShadow: 'var(--shadow-glow)', transition: 'all 0.2s',
                                     opacity: (!activeText.trim()) ? 0.5 : 1
                                 }}
                             >
-                                <Volume2 size={16} className={isPlayingReference ? 'animate-pulse' : ''} />
+                                <Volume2 size={15} className={isPlayingReference ? 'animate-pulse' : ''} />
                                 {isPlayingReference ? 'Playing Native Audio...' : 'Listen to Target'}
                             </button>
                         </div>
@@ -542,104 +630,125 @@ const SpeechStudio = ({ user }) => {
                 </div>
 
                 {/* ═══ COLUMN 2 / ZONE B: AUDIO CAPTURE CONTROL ═══ */}
-                <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderRadius: '1.25rem', textAlign: 'center', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '420px' }}>
-                    <div>
-                        <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', textAlign: 'center' }}>
-                            Zone B: Audio Capture Control
-                        </div>
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    {/* Zone B Description Above Box (Light Sky Blue) */}
+                    <div style={{
+                        padding: '0.75rem 1rem', background: '#f0f9ff', borderTopLeftRadius: '1.25rem', borderTopRightRadius: '1.25rem',
+                        border: '1px solid rgba(56, 189, 248, 0.4)', borderBottom: 'none',
+                        textAlign: 'center', fontSize: '0.95rem', color: '#0f172a', lineHeight: '1.5', fontWeight: '500'
+                    }}>
+                        <strong style={{ color: '#0284c7', fontWeight: '900' }}>Zone B (Audio Capture Control):</strong> Record your spoken speech with live audio waveform visualization and real-time speech recognition transcript.
+                    </div>
 
-                        {/* Microphone Record Button */}
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '1.5rem 0' }}>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={handleToggleRecord}
-                                disabled={studioState === 'analyzing'}
-                                style={{
-                                    width: '85px', height: '85px', borderRadius: '50%', border: 'none',
-                                    background: studioState === 'recording'
-                                        ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                                        : 'linear-gradient(135deg, #38bdf8, #a855f7)',
-                                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: studioState === 'analyzing' ? 'not-allowed' : 'pointer',
-                                    boxShadow: studioState === 'recording' ? '0 0 30px rgba(239,68,68,0.6)' : '0 0 30px rgba(56,189,248,0.4)'
-                                }}
-                            >
-                                {studioState === 'recording' ? (
-                                    <MicOff size={36} />
-                                ) : studioState === 'analyzing' ? (
-                                    <RefreshCw size={34} className="animate-spin" />
-                                ) : (
-                                    <Mic size={36} />
-                                )}
-                            </motion.button>
-                        </div>
+                    <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: '1.25rem', borderBottomRightRadius: '1.25rem', textAlign: 'center', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, minHeight: '420px' }}>
+                        <div>
+                            <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', letterSpacing: '0.5px', marginBottom: '1rem', textAlign: 'center' }}>
+                                Zone B: Audio Capture Control
+                            </div>
 
-                        {/* Live Canvas Wave Visualizer & Recorded Text Display */}
-                        <div style={{ minHeight: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                            {studioState === 'recording' ? (
-                                <>
-                                    <canvas ref={canvasRef} width="300" height="60" style={{ width: '100%', maxWidth: '300px', height: '60px' }} />
-                                    <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontStyle: 'italic', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        Listening: "{spokenText || '...'}"
-                                    </div>
-                                </>
-                            ) : studioState === 'analyzing' ? (
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#a855f7', fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
-                                        <RefreshCw size={18} className="animate-spin" /> Analyzing rhythm & phonemes...
-                                    </div>
-                                    {spokenText && (
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            Recorded: "{spokenText}"
-                                        </div>
-                                    )}
-                                </div>
-                            ) : studioState === 'reviewing' ? (
-                                <div style={{ textAlign: 'center', width: '100%' }}>
-                                    {spokenText ? (
-                                        <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.6rem', border: '1px solid var(--glass-border)' }}>
-                                            <div style={{ fontSize: '0.75rem', color: '#000000', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>YOUR RECORDED SPEECH</div>
-                                            <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontStyle: 'italic', lineHeight: '1.4' }}>
-                                                "{spokenText}"
-                                            </div>
-                                        </div>
+                            {/* Microphone Record Button */}
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '1.5rem 0' }}>
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={handleToggleRecord}
+                                    disabled={studioState === 'analyzing'}
+                                    style={{
+                                        width: '85px', height: '85px', borderRadius: '50%', border: 'none',
+                                        background: studioState === 'recording'
+                                            ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                                            : 'linear-gradient(135deg, #38bdf8, #a855f7)',
+                                        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: studioState === 'analyzing' ? 'not-allowed' : 'pointer',
+                                        boxShadow: studioState === 'recording' ? '0 0 30px rgba(239,68,68,0.6)' : '0 0 30px rgba(56,189,248,0.4)'
+                                    }}
+                                >
+                                    {studioState === 'recording' ? (
+                                        <MicOff size={36} />
+                                    ) : studioState === 'analyzing' ? (
+                                        <RefreshCw size={34} className="animate-spin" />
                                     ) : (
-                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                                            Tap microphone to start recording next speech
-                                        </div>
+                                        <Mic size={36} />
                                     )}
-                                </div>
-                            ) : (
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                                    Tap microphone to start recording baseline speech
-                                </div>
-                            )}
+                                </motion.button>
+                            </div>
+
+                            {/* Live Canvas Wave Visualizer & Recorded Text Display */}
+                            <div style={{ minHeight: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                {studioState === 'recording' ? (
+                                    <>
+                                        <canvas ref={canvasRef} width="300" height="60" style={{ width: '100%', maxWidth: '300px', height: '60px' }} />
+                                        <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontStyle: 'italic', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            Listening: "{spokenText || '...'}"
+                                        </div>
+                                    </>
+                                ) : studioState === 'analyzing' ? (
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#a855f7', fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+                                            <RefreshCw size={18} className="animate-spin" /> Analyzing rhythm & phonemes...
+                                        </div>
+                                        {spokenText && (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                Recorded: "{spokenText}"
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : studioState === 'reviewing' ? (
+                                    <div style={{ textAlign: 'center', width: '100%' }}>
+                                        {spokenText ? (
+                                            <div style={{ padding: '0.5rem 0.75rem', background: '#ffffff', borderRadius: '0.6rem', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>YOUR RECORDED SPEECH</div>
+                                                <div style={{ fontSize: '0.88rem', color: '#0f172a', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                                    "{spokenText}"
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                                                Tap microphone to start recording next speech
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                                        Tap microphone to start recording baseline speech
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* ═══ COLUMN 3 / ZONE C: GRANULAR SCORE & FEEDBACK MAP ═══ */}
-                <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderRadius: '1.25rem', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '420px' }}>
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: '1rem', width: '100%' }}>
-                            <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center' }}>
-                                Zone C: Feedback Map
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    {/* Zone C Description Above Box (Light Sky Blue) */}
+                    <div style={{
+                        padding: '0.75rem 1rem', background: '#f0f9ff', borderTopLeftRadius: '1.25rem', borderTopRightRadius: '1.25rem',
+                        border: '1px solid rgba(56, 189, 248, 0.4)', borderBottom: 'none',
+                        textAlign: 'center', fontSize: '0.95rem', color: '#0f172a', lineHeight: '1.5', fontWeight: '500'
+                    }}>
+                        <strong style={{ color: '#0284c7', fontWeight: '900' }}>Zone C (Feedback Map):</strong> Review macro performance scores (Overall, Accuracy, Fluency), color-coded word accuracy maps, and detailed syllable/phoneme drill-down feedback.
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: '1.25rem', borderBottomRightRadius: '1.25rem', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, minHeight: '420px' }}>
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: '1rem', width: '100%' }}>
+                                <div style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', letterSpacing: '0.5px', textAlign: 'center' }}>
+                                    Zone C: Feedback Map
+                                </div>
+                                {studioState === 'reviewing' && (
+                                    <button
+                                        onClick={handleToggleRecord}
+                                        style={{
+                                            position: 'absolute', right: 0,
+                                            padding: '0.3rem 0.7rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)',
+                                            color: 'var(--text-primary)', border: '1px solid var(--glass-border)', fontSize: '0.78rem',
+                                            fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                        }}
+                                    >
+                                        <RotateCcw size={12} /> Re-record
+                                    </button>
+                                )}
                             </div>
-                            {studioState === 'reviewing' && (
-                                <button
-                                    onClick={handleToggleRecord}
-                                    style={{
-                                        position: 'absolute', right: 0,
-                                        padding: '0.3rem 0.7rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.05)',
-                                        color: 'var(--text-primary)', border: '1px solid var(--glass-border)', fontSize: '0.78rem',
-                                        fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
-                                    }}
-                                >
-                                    <RotateCcw size={12} /> Re-record
-                                </button>
-                            )}
-                        </div>
 
                         {studioState === 'reviewing' && analysisResult ? (
                             analysisResult.isMismatch ? (
@@ -650,8 +759,8 @@ const SpeechStudio = ({ user }) => {
                                         {analysisResult.message}
                                     </div>
                                     {analysisResult.spokenText && (
-                                        <div style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
-                                            Captured audio: <span style={{ color: '#fff', fontStyle: 'italic' }}>"{analysisResult.spokenText}"</span>
+                                        <div style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', background: '#ffffff', borderRadius: '0.5rem', color: '#0f172a', border: '1px solid rgba(0,0,0,0.1)', marginBottom: '0.85rem' }}>
+                                            Captured audio: <span style={{ color: '#0f172a', fontStyle: 'italic', fontWeight: '700' }}>"{analysisResult.spokenText}"</span>
                                         </div>
                                     )}
                                     <button
@@ -685,17 +794,22 @@ const SpeechStudio = ({ user }) => {
                                 {/* Color-Coded Word Level Feedback Map */}
                                 <div style={{ marginBottom: '0.75rem' }}>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.5rem' }}>
-                                        Click a word to inspect mistakes & audio:
+                                        Hover over any word to inspect mistakes & audio:
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0.85rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.75rem', border: '1px solid var(--glass-border)' }}>
+                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0.85rem', background: '#ffffff', borderRadius: '0.75rem', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                                         {analysisResult.words.map((item, idx) => {
                                             const badgeStyle = getWordBadgeStyle(item.accuracy_score);
                                             return (
                                                 <motion.button
                                                     key={idx}
-                                                    whileHover={{ scale: 1.05 }}
+                                                    whileHover={{ scale: 1.08 }}
                                                     whileTap={{ scale: 0.95 }}
-                                                    onClick={() => setSelectedWord(item)}
+                                                    onMouseEnter={(e) => handleWordMouseEnter(item, e)}
+                                                    onMouseLeave={handleWordMouseLeave}
+                                                    onClick={() => {
+                                                        setSelectedWord(item);
+                                                        setPopupOpenedBy('click');
+                                                    }}
                                                     style={{
                                                         padding: '0.35rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.95rem',
                                                         fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
@@ -722,10 +836,11 @@ const SpeechStudio = ({ user }) => {
                         )}
                     </div>
                 </div>
-
             </div>
 
-            {/* ═══ DRILL-DOWN WORD FEEDBACK MODAL ═══ */}
+        </div>
+
+            {/* ═══ DRILL-DOWN WORD FEEDBACK HOVER CARD ═══ */}
             <AnimatePresence>
                 {selectedWord && (
                     <motion.div
@@ -734,16 +849,25 @@ const SpeechStudio = ({ user }) => {
                         exit={{ opacity: 0 }}
                         style={{
                             position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                            background: popupOpenedBy === 'hover' ? 'transparent' : 'rgba(0,0,0,0.55)',
+                            backdropFilter: popupOpenedBy === 'hover' ? 'none' : 'blur(5px)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            zIndex: 9999, padding: '1rem'
+                            zIndex: 9999, padding: '1rem',
+                            pointerEvents: popupOpenedBy === 'hover' ? 'none' : 'auto'
                         }}
-                        onClick={() => setSelectedWord(null)}
+                        onMouseEnter={handleCardMouseEnter}
+                        onMouseLeave={handleCardMouseLeave}
+                        onClick={() => {
+                            setSelectedWord(null);
+                            setPopupOpenedBy(null);
+                        }}
                     >
                         <motion.div
-                            initial={{ scale: 0.9, y: 20 }}
+                            initial={{ scale: 0.9, y: 15 }}
                             animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.9, y: 20 }}
+                            exit={{ scale: 0.9, y: 15 }}
+                            onMouseEnter={handleCardMouseEnter}
+                            onMouseLeave={handleCardMouseLeave}
                             onClick={e => e.stopPropagation()}
                             style={{
                                 width: '100%', maxWidth: '480px', background: 'var(--modal-bg, #0f172a)',
@@ -754,7 +878,10 @@ const SpeechStudio = ({ user }) => {
                         >
                             {/* Close Icon Button */}
                             <button
-                                onClick={() => setSelectedWord(null)}
+                                onClick={() => {
+                                    setSelectedWord(null);
+                                    setPopupOpenedBy(null);
+                                }}
                                 style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                             >
                                 <XCircle size={22} />

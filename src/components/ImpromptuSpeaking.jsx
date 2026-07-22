@@ -219,9 +219,10 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
     };
 
     const handleUploadClick = () => {
-        // Generate pre-populated name based on selected topic
-        const sanitizedTopic = topic.replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "-");
-        setUploadName(`Impromptu-${sanitizedTopic}`.substring(0, 60));
+        // Generate pre-populated name based on selected topic question
+        const cleanQuestion = (topic || "Impromptu Speech").replace(/[^a-zA-Z0-9 ]/g, "").trim();
+        const formattedTitle = cleanQuestion ? `Impromptu - ${cleanQuestion}` : "Impromptu Speech";
+        setUploadName(formattedTitle.substring(0, 80));
         setShowUploadModal(true);
     };
 
@@ -253,7 +254,7 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
                 throw new Error(errData.message || 'Failed to get upload URL');
             }
 
-            const { uploadUrl } = await res.json();
+            const { uploadUrl, key } = await res.json();
 
             const uploadRes = await fetch(uploadUrl, {
                 method: 'PUT',
@@ -263,10 +264,21 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
 
             if (!uploadRes.ok) throw new Error('Failed to upload video content');
 
+            // Auto-trigger speech analysis job
+            try {
+                await fetch(`${API_BASE_URL}/analyze-video`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, userId: user.id || user.userId })
+                });
+            } catch (analyzeErr) {
+                console.warn("Auto-trigger speech analysis error:", analyzeErr);
+            }
+
             if (onUploadSuccess) {
-                onUploadSuccess();
+                onUploadSuccess(key);
             } else {
-                alert("Speech uploaded successfully!");
+                alert("Speech uploaded! Analysis job started automatically.");
                 resetCapture();
             }
         } catch (err) {
@@ -348,8 +360,9 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             textAlign: 'center',
-                            background: 'rgba(0,0,0,0.15)',
-                            border: '1px dashed var(--glass-border)',
+                            background: '#ffffff',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                             marginBottom: '1.5rem',
                             position: 'relative',
                             overflow: 'hidden'
@@ -362,12 +375,12 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                         transition={{ duration: 0.25 }}
-                                        style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-primary)', padding: '0.5rem' }}
+                                        style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', padding: '0.5rem' }}
                                     >
                                         "{topic}"
                                     </motion.div>
                                 ) : (
-                                    <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.95rem' }}>
+                                    <div style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.95rem' }}>
                                         No topic drawn yet. Click 'Get Topic' to generate an impromptu speaking topic.
                                     </div>
                                 )}
@@ -380,11 +393,12 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
                             gap: '0.75rem',
                             padding: '1rem',
                             borderRadius: '0.75rem',
-                            background: 'rgba(56, 189, 248, 0.05)',
-                            border: '1px solid rgba(56, 189, 248, 0.1)',
+                            background: '#ffffff',
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             fontSize: '0.85rem',
                             lineHeight: '1.4',
-                            color: 'var(--text-secondary)',
+                            color: '#334155',
                             alignItems: 'flex-start',
                             marginBottom: '1.5rem'
                         }}>
@@ -641,8 +655,9 @@ const ImpromptuSpeaking = ({ user, onUploadSuccess }) => {
                                 placeholder="Impromptu speech title"
                                 style={{
                                     width: '100%', padding: '0.8rem 1rem', borderRadius: '0.75rem',
-                                    background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)',
-                                    color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1rem'
+                                    background: '#ffffff', border: '1px solid #cbd5e1',
+                                    color: '#0f172a', marginBottom: '1.5rem', fontSize: '1rem',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
                                 }}
                                 autoFocus
                             />

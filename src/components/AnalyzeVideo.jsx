@@ -1,7 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { PlayCircle, BarChart2, Calendar, FileVideo, AlertCircle, FileText, X, CheckCircle, Clock, RefreshCcw, Trash2 } from 'lucide-react';
+import { PlayCircle, BarChart2, Calendar, FileVideo, AlertCircle, FileText, X, CheckCircle, Clock, RefreshCcw, Trash2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../config';
+
+const ImprovementCallout = ({ example, defaultText }) => {
+    const textToShow = example || defaultText;
+    if (!textToShow) return null;
+    return (
+        <div style={{
+            marginTop: '0.9rem',
+            padding: '0.85rem 1.1rem',
+            borderRadius: '0.75rem',
+            background: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem'
+        }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Sparkles size={15} color="#38bdf8" />
+                Example of how to elevate speech content:
+            </div>
+            <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.55', fontStyle: 'italic', opacity: 0.95 }}>
+                "{textToShow}"
+            </div>
+        </div>
+    );
+};
 
 const AnalyzeVideo = ({ user }) => {
     const [videos, setVideos] = useState([]);
@@ -52,15 +77,15 @@ const AnalyzeVideo = ({ user }) => {
 
     // Auto-polling for IN_PROGRESS videos
     useEffect(() => {
-        const inProgressVideos = videos.filter(v => v.analysisStatus === 'IN_PROGRESS');
+        const inProgressVideos = videos.filter(v => v.analysisStatus === 'IN_PROGRESS' || v.status === 'IN_PROGRESS');
 
         if (inProgressVideos.length > 0) {
             const intervalId = setInterval(() => {
                 // Check all in-progress videos silently
                 inProgressVideos.forEach(video => {
-                    handleCheckStatus(video.key, true);
+                    handleCheckStatus(video.key || video.videoKey, true);
                 });
-            }, 15000); // Check every 15 seconds
+            }, 5000); // Check every 5 seconds for fast updates
 
             return () => clearInterval(intervalId);
         }
@@ -217,7 +242,7 @@ const AnalyzeVideo = ({ user }) => {
     };
 
     // Helper to support both new and legacy report formats
-    const analysisData = selectedReport?.speechAnalysis || selectedReport?.toastmasterAnalysis;
+    const analysisData = selectedReport?.speech || selectedReport?.speechAnalysis || selectedReport?.toastmasterAnalysis || selectedReport;
 
     if (selectedReport) {
         console.log("Debug - Selected Report:", selectedReport);
@@ -488,9 +513,7 @@ const AnalyzeVideo = ({ user }) => {
                                             </div>
 
                                             {/* ═══ Dynamic Criteria Sections ═══ */}
-                                            {/* Automatically renders any criterion not in the special-rendering set */}
                                             {(() => {
-                                                // These keys have special/hardcoded rendering
                                                 const specialKeys = new Set([
                                                     'summary', 'central_message', 'glows', 'grows',
                                                     'body_structure', 'filler_words', 'grammar_metrics',
@@ -499,12 +522,11 @@ const AnalyzeVideo = ({ user }) => {
                                                     'performance_summary', 'overall_recommendation'
                                                 ]);
 
-                                                // Gather all non-special sections that have meaningful data
                                                 const dynamicSections = Object.entries(analysisData)
                                                     .filter(([key, val]) => {
                                                         if (specialKeys.has(key)) return false;
                                                         if (val === null || val === undefined) return false;
-                                                        return true; // Accept strings, arrays, and objects
+                                                        return true;
                                                     })
                                                     .filter(([key]) => shouldShow(key));
 
@@ -515,7 +537,6 @@ const AnalyzeVideo = ({ user }) => {
                                                         {dynamicSections.map(([key, val]) => {
                                                             const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-                                                            // Case 1: Plain string value
                                                             if (typeof val === 'string') {
                                                                 return (
                                                                     <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
@@ -525,7 +546,6 @@ const AnalyzeVideo = ({ user }) => {
                                                                 );
                                                             }
 
-                                                            // Case 2: Array value (list of items)
                                                             if (Array.isArray(val)) {
                                                                 return (
                                                                     <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
@@ -537,43 +557,52 @@ const AnalyzeVideo = ({ user }) => {
                                                                 );
                                                             }
 
-                                                            // Case 3: Object with score/comment
-                                                            if (typeof val === 'object') {
+                                                            if (typeof val === 'object' && val !== null) {
+                                                                const scoreVal = val.score !== undefined ? val.score : val.rating;
+                                                                const commentVal = val.comment || val.feedback || val.details || val.summary || val.text;
+                                                                const exampleVal = val.improvement_example || val.example || val.improvementExample;
+
+                                                                const subEntries = Object.entries(val).filter(
+                                                                    ([subKey]) => !['score', 'rating', 'comment', 'feedback', 'details', 'summary', 'text', 'improvement_example', 'example', 'improvementExample'].includes(subKey)
+                                                                );
+
                                                                 return (
                                                                     <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
                                                                         <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
-                                                                        {val.score !== undefined && (
+                                                                        {scoreVal !== undefined && (
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(val.score) }}>{val.score}/10</div>
+                                                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: getScoreColor(scoreVal) }}>{scoreVal}/10</div>
                                                                             </div>
                                                                         )}
-                                                                        {val.comment && (
+                                                                        {commentVal && (
                                                                             <div style={{ fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>
-                                                                                {val.comment}
+                                                                                {typeof commentVal === 'string' ? commentVal : JSON.stringify(commentVal)}
                                                                             </div>
                                                                         )}
-                                                                        {/* Render any additional sub-fields beyond score and comment */}
-                                                                        {Object.entries(val)
-                                                                            .filter(([subKey]) => subKey !== 'score' && subKey !== 'comment')
-                                                                            .map(([subKey, subVal]) => {
-                                                                                const subLabel = subKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                                                                return (
-                                                                                    <div key={subKey} style={{ marginTop: '0.8rem' }}>
-                                                                                        <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.3rem', fontSize: '0.9rem' }}>{subLabel}:</div>
-                                                                                        <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.5', fontSize: '0.95rem' }}>
-                                                                                            {typeof subVal === 'string' ? subVal
-                                                                                                : Array.isArray(subVal) ? subVal.join(', ')
-                                                                                                    : JSON.stringify(subVal)}
-                                                                                        </div>
+                                                                        <ImprovementCallout example={exampleVal} />
+                                                                        {subEntries.map(([subKey, subVal]) => {
+                                                                            const subLabel = subKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                                                            let displayContent = '';
+                                                                            if (typeof subVal === 'string' || typeof subVal === 'number') {
+                                                                                displayContent = String(subVal);
+                                                                            } else if (Array.isArray(subVal)) {
+                                                                                displayContent = subVal.map(item => (typeof item === 'string' ? item : JSON.stringify(item))).join(', ');
+                                                                            } else if (typeof subVal === 'object' && subVal !== null) {
+                                                                                displayContent = subVal.comment || subVal.feedback || subVal.text || JSON.stringify(subVal);
+                                                                            }
+                                                                            return (
+                                                                                <div key={subKey} style={{ marginTop: '0.8rem' }}>
+                                                                                    <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.3rem', fontSize: '0.9rem' }}>{subLabel}:</div>
+                                                                                    <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.5', fontSize: '0.95rem' }}>
+                                                                                        {displayContent}
                                                                                     </div>
-                                                                                );
-                                                                            })
-                                                                        }
+                                                                                </div>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 );
                                                             }
 
-                                                            // Case 4: Number or boolean (unlikely but safe)
                                                             return (
                                                                 <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '0.8rem' }}>
                                                                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '0.5rem' }}>{label}</div>
@@ -601,6 +630,7 @@ const AnalyzeVideo = ({ user }) => {
                                                             <div style={{ fontWeight: '700', color: 'var(--accent-primary)', marginBottom: '0.4rem', fontSize: '1rem' }}>Word Choice:</div>
                                                             <div style={{ color: 'var(--text-primary)', opacity: 0.9, lineHeight: '1.6', fontSize: '1rem' }}>{analysisData.body_structure?.word_choice || "N/A"}</div>
                                                         </div>
+                                                        <ImprovementCallout example={analysisData.body_structure?.improvement_example || analysisData.body_structure?.example} />
                                                     </div>
                                                 </div>
                                             )}

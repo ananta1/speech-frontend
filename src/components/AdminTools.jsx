@@ -1,9 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Shield, CheckCircle, AlertCircle, Loader2, Mail, Save, Plus, Trash2, Edit3, ClipboardList, X, MessageSquare, ChevronDown, ChevronUp, Clock, Search, Sparkles, RefreshCcw, Activity, Globe, Eye, TrendingUp } from 'lucide-react';
+import { UserPlus, Shield, CheckCircle, AlertCircle, Loader2, Mail, Save, Plus, Trash2, Edit3, ClipboardList, X, MessageSquare, ChevronDown, ChevronUp, Clock, Search, Sparkles, RefreshCcw, RefreshCw, Activity, Globe, Eye, TrendingUp, ArrowLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 
-const AdminTools = ({ user, activeSubTab = 'setup-instructor' }) => {
+const ADMIN_CARDS = [
+    {
+        id: 'traffic-monitoring',
+        title: 'Traffic Monitoring',
+        badge: 'Analytics',
+        description: 'Monitor real-time site visits, unique visitors, user IPs, locations, and page hit logs.',
+        icon: Globe,
+        tint: '#0284c7',
+        btnBg: 'linear-gradient(135deg, #0284c7, #0369a1)'
+    },
+    {
+        id: 'user-management',
+        title: 'User Management',
+        badge: 'Users & Roles',
+        description: 'Inspect registered user accounts, manage monthly speech evaluation limits, and adjust role permissions.',
+        icon: Shield,
+        tint: '#16a34a',
+        btnBg: 'linear-gradient(135deg, #16a34a, #15803d)'
+    },
+    {
+        id: 'master-evaluation',
+        title: 'Master Criteria Rubrics',
+        badge: 'System Rubrics',
+        description: 'Manage system-wide speech scoring metrics, criteria weights, and default evaluation rules.',
+        icon: ClipboardList,
+        tint: '#9333ea',
+        btnBg: 'linear-gradient(135deg, #9333ea, #7e22ce)'
+    },
+    {
+        id: 'setup-instructor',
+        title: 'Promote Instructor',
+        badge: 'Access Control',
+        description: 'Grant instructor administrative privileges to existing student accounts by email address.',
+        icon: UserPlus,
+        tint: '#2563eb',
+        btnBg: 'linear-gradient(135deg, #2563eb, #1d4ed8)'
+    },
+    {
+        id: 'messages',
+        title: 'Contact Messages',
+        badge: 'Inquiries',
+        description: 'View and respond to user messages submitted through the website contact form.',
+        icon: MessageSquare,
+        tint: '#e11d48',
+        btnBg: 'linear-gradient(135deg, #e11d48, #be123c)'
+    },
+    {
+        id: 'impromptu-management',
+        title: 'Impromptu Topics',
+        badge: 'Practice Prompts',
+        description: 'Add, edit, generate with AI, and manage impromptu speaking prompts for user practice.',
+        icon: Sparkles,
+        tint: '#d97706',
+        btnBg: 'linear-gradient(135deg, #d97706, #b45309)'
+    },
+    {
+        id: 'email-coach',
+        title: 'Outreach Email Coach',
+        badge: 'Outreach',
+        description: 'Send customized partnership proposals and outreach emails to prospective speech coaches.',
+        icon: Mail,
+        tint: '#0891b2',
+        btnBg: 'linear-gradient(135deg, #0891b2, #0e7490)'
+    },
+    {
+        id: 'email-history',
+        title: 'Email History',
+        badge: 'Audit Trail',
+        description: 'Review past outreach email logs, recipient details, and coach communications history.',
+        icon: Clock,
+        tint: '#4f46e5',
+        btnBg: 'linear-gradient(135deg, #4f46e5, #4338ca)'
+    },
+    {
+        id: 'feature-campaign',
+        title: 'Feature Campaign Email',
+        badge: 'Campaigns',
+        description: 'Send feature announcement emails detailing all platform tools (AI Studio, Video Analysis, Speech Content Examples) to selected students in DynamoDB.',
+        icon: Sparkles,
+        tint: '#6366f1',
+        btnBg: 'linear-gradient(135deg, #6366f1, #4f46e5)'
+    }
+];
+
+const AdminTools = ({ user, activeSubTab = 'hub' }) => {
+    const [subTab, setSubTab] = useState(activeSubTab === 'admin-tools' ? 'hub' : (activeSubTab || 'hub'));
+
+    useEffect(() => {
+        if (activeSubTab === 'admin-tools') setSubTab('hub');
+        else if (activeSubTab) setSubTab(activeSubTab);
+    }, [activeSubTab]);
+
     // ── Setup Instructor State ──
     const [targetEmail, setTargetEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +148,8 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
     const [commsMsg, setCommsMsg] = useState({ text: '', type: '' });
     const [commsSearch, setCommsSearch] = useState('');
     const [expandedCommId, setExpandedCommId] = useState(null);
+    const [resendingId, setResendingId] = useState(null);
+    const [resendStatus, setResendStatus] = useState({});
 
     // ── Impromptu Topics State ──
     const [topics, setTopics] = useState([]);
@@ -74,27 +167,66 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
     const [trafficMsg, setTrafficMsg] = useState({ text: '', type: '' });
     const [trafficSearch, setTrafficSearch] = useState('');
 
+    // ── Feature Campaign Email State ──
+    const DEFAULT_CAMPAIGN_BODY = `Welcome to Practice Your Speech! We are excited to introduce powerful new tools designed to elevate your public speaking skills:
+
+🎙️ Speech Studio (Sentence & Pronunciation Practice)
+Practice practice sentences or custom text with instant sentence-level pronunciation scoring, syllable stress analysis, phoneme accuracy breakdowns, and word-by-word articulation feedback.
+
+📹 Automatic Video Upload & AI Analysis
+Upload your speech videos directly for instant feedback! Analysis begins automatically upon upload completion—evaluating vocal delivery, body language, facial expressions, and speech structure.
+
+✨ Verbatim Speech Content Improvement Examples
+Get tailored, section-by-section script rewrites citing your actual spoken content for Introduction, Body Structure, Conclusion, Storytelling, Audience Connection, and Rhetorical Devices!
+
+⚡ Impromptu Speaking & Table Topics
+Challenge yourself with random impromptu speech topics! Features auto-generated topic prompts, built-in recording timer, and instant performance analysis.
+
+🔍 Interactive Hover Feedback Popovers (Zone C)
+Hover over words in your transcript to view instant pronunciation, grammar, and delivery feedback popovers without losing your place.
+
+📊 Granular Metrics & Progress Dashboard
+Track overall score trends (1-10 scale), pronunciation scores, delivery metrics, and performance logs across all your practices.`;
+
+    const [selectedCampaignEmails, setSelectedCampaignEmails] = useState(new Set());
+    const [campaignSubject, setCampaignSubject] = useState("🚀 Discover What's New on Practice Your Speech!");
+    const [campaignCustomNote, setCampaignCustomNote] = useState('');
+    const [campaignBody, setCampaignBody] = useState(DEFAULT_CAMPAIGN_BODY);
+    const [externalEmailsInput, setExternalEmailsInput] = useState('');
+    const [campaignSearch, setCampaignSearch] = useState('');
+    const [campaignRoleFilter, setCampaignRoleFilter] = useState('all');
+    const [isSendingCampaign, setIsSendingCampaign] = useState(false);
+    const [campaignMsg, setCampaignMsg] = useState({ text: '', type: '', results: [] });
+
+    const getParsedExternalEmails = () => {
+        if (!externalEmailsInput || !externalEmailsInput.trim()) return [];
+        return externalEmailsInput
+            .split(/[\n,;\s]+/)
+            .map(e => e.trim().toLowerCase())
+            .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    };
+
     // Fetch data when switching tabs
     useEffect(() => {
-        if (activeSubTab === 'traffic-monitoring' && trafficData.visitors.length === 0) {
+        if (subTab === 'traffic-monitoring' && trafficData.visitors.length === 0) {
             fetchTrafficData();
         }
-        if (activeSubTab === 'master-evaluation' && !criteria) {
+        if (subTab === 'master-evaluation' && !criteria) {
             fetchMasterCriteria();
         }
-        if (activeSubTab === 'user-management' && usersList.length === 0) {
+        if ((subTab === 'user-management' || subTab === 'feature-campaign') && usersList.length === 0) {
             fetchUsersList();
         }
-        if (activeSubTab === 'messages' && contactMessages.length === 0) {
+        if (subTab === 'messages' && contactMessages.length === 0) {
             fetchContactMessages();
         }
-        if (activeSubTab === 'email-history' && coachComms.length === 0) {
+        if (subTab === 'email-history' && coachComms.length === 0) {
             fetchCoachCommunications();
         }
-        if (activeSubTab === 'impromptu-management' && topics.length === 0) {
+        if (subTab === 'impromptu-management' && topics.length === 0) {
             fetchTopicsList();
         }
-    }, [activeSubTab]);
+    }, [subTab]);
 
     const fetchTrafficData = async () => {
         setIsLoadingTraffic(true);
@@ -145,6 +277,89 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
         }
     };
 
+    const toggleCampaignUser = (email) => {
+        if (!email) return;
+        setSelectedCampaignEmails(prev => {
+            const next = new Set(prev);
+            if (next.has(email)) next.delete(email);
+            else next.add(email);
+            return next;
+        });
+    };
+
+    const getFilteredCampaignUsers = () => {
+        return usersList.filter(u => {
+            if (!u.email) return false;
+            if (campaignRoleFilter !== 'all' && (u.role || 'student') !== campaignRoleFilter) return false;
+            if (campaignSearch) {
+                const q = campaignSearch.toLowerCase();
+                return (u.email || '').toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q);
+            }
+            return true;
+        });
+    };
+
+    const toggleSelectAllCampaignUsers = () => {
+        const filtered = getFilteredCampaignUsers();
+        const filteredEmails = filtered.map(u => u.email).filter(Boolean);
+        const allSelected = filteredEmails.every(e => selectedCampaignEmails.has(e));
+
+        setSelectedCampaignEmails(prev => {
+            const next = new Set(prev);
+            if (allSelected) {
+                filteredEmails.forEach(e => next.delete(e));
+            } else {
+                filteredEmails.forEach(e => next.add(e));
+            }
+            return next;
+        });
+    };
+
+    const handleSendCampaignEmail = async () => {
+        const dbRecipients = Array.from(selectedCampaignEmails);
+        const externalRecipients = getParsedExternalEmails();
+        const allRecipientsSet = new Set([...dbRecipients, ...externalRecipients]);
+        const recipientsList = Array.from(allRecipientsSet);
+
+        if (recipientsList.length === 0) {
+            setCampaignMsg({ text: 'Please select at least one recipient user or enter external email addresses.', type: 'error' });
+            return;
+        }
+
+        setIsSendingCampaign(true);
+        setCampaignMsg({ text: '', type: '', results: [] });
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/send-feature-campaign-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: user?.id || user?.userId || user?.email || localStorage.getItem('userId'),
+                    recipientEmails: recipientsList,
+                    subject: campaignSubject,
+                    customNote: campaignCustomNote,
+                    campaignBody: campaignBody
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                setCampaignMsg({
+                    text: data.message || `Campaign emails dispatched to ${data.totalSent} users!`,
+                    type: 'success',
+                    results: data.results || []
+                });
+            } else {
+                setCampaignMsg({ text: data.message || 'Failed to send campaign emails.', type: 'error' });
+            }
+        } catch (err) {
+            console.error("Campaign email error:", err);
+            setCampaignMsg({ text: 'Network error sending campaign email.', type: 'error' });
+        } finally {
+            setIsSendingCampaign(false);
+        }
+    };
+
     const fetchContactMessages = async () => {
         setIsLoadingMessages(true);
         setMessagesMsg({ text: '', type: '' });
@@ -174,7 +389,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
             const res = await fetch(`${API_BASE_URL}/get-coach-communications`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminId: user.id || user.userId })
+                body: JSON.stringify({ adminId: user?.id || user?.userId || user?.email || localStorage.getItem('userId') })
             });
             const data = await res.json();
             if (res.ok) {
@@ -186,6 +401,61 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
             setCommsMsg({ text: 'Connection error.', type: 'error' });
         } finally {
             setIsLoadingComms(false);
+        }
+    };
+
+    const handleResendEmail = async (msg, e) => {
+        if (e) e.stopPropagation();
+        if (!msg || !msg.coachEmail) return;
+
+        const commId = msg.communicationId;
+        setResendingId(commId);
+        setResendStatus(prev => ({ ...prev, [commId]: { text: 'Resending email...', type: 'info' } }));
+
+        try {
+            const isCampaign = msg.category === 'feature_campaign' || (msg.subject || '').startsWith('[Campaign]');
+            const endpoint = isCampaign ? `${API_BASE_URL}/send-feature-campaign-email` : `${API_BASE_URL}/send-coach-email`;
+            const adminId = user?.id || user?.userId || user?.email || localStorage.getItem('userId');
+
+            const payload = isCampaign ? {
+                adminId,
+                recipientEmails: [msg.coachEmail],
+                subject: (msg.subject || '').replace(/^\[Campaign\]\s*/, ''),
+                campaignBody: msg.body
+            } : {
+                adminId,
+                email: msg.coachEmail,
+                subject: msg.subject,
+                body: msg.body
+            };
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                setResendStatus(prev => ({
+                    ...prev,
+                    [commId]: { text: `✓ Resent email successfully to ${msg.coachEmail}!`, type: 'success' }
+                }));
+                setTimeout(() => fetchCoachCommunications(), 1000);
+            } else {
+                setResendStatus(prev => ({
+                    ...prev,
+                    [commId]: { text: data.message || 'Failed to resend email.', type: 'error' }
+                }));
+            }
+        } catch (err) {
+            console.error("Resend email error:", err);
+            setResendStatus(prev => ({
+                ...prev,
+                [commId]: { text: 'Network error resending email.', type: 'error' }
+            }));
+        } finally {
+            setResendingId(null);
         }
     };
 
@@ -528,13 +798,116 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
         }
     };
 
+    if (subTab === 'hub') {
+        return (
+            <div style={{ width: '100%', maxWidth: '1150px', margin: '0 auto', padding: '1rem 0.5rem 2rem' }}>
+                {/* Header Banner */}
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1.25rem', borderRadius: '999px', background: 'rgba(239,68,68,0.12)', border: '1.5px solid rgba(239,68,68,0.4)' }}>
+                        <Shield size={18} color="#ef4444" />
+                        <span style={{ fontSize: '1.05rem', color: '#ef4444', fontWeight: '900', letterSpacing: '0.75px', textTransform: 'uppercase' }}>Admin Tools Hub</span>
+                    </div>
+                </div>
+
+                {/* Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', alignItems: 'stretch' }}>
+                    {ADMIN_CARDS.map(card => {
+                        const CardIcon = card.icon;
+                        return (
+                            <motion.div
+                                key={card.id}
+                                whileHover={{ y: -6, scale: 1.01 }}
+                                transition={{ duration: 0.2 }}
+                                className="glass-panel"
+                                style={{
+                                    padding: '1.75rem', borderRadius: '1.5rem', background: '#ffffff',
+                                    border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                                    position: 'relative', overflow: 'hidden'
+                                }}
+                            >
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: card.btnBg }} />
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                        <div style={{ width: '50px', height: '50px', borderRadius: '1rem', background: `${card.tint}18`, border: `1px solid ${card.tint}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.tint }}>
+                                            <CardIcon size={24} />
+                                        </div>
+                                        <span style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', background: `${card.tint}14`, color: card.tint }}>
+                                            {card.badge}
+                                        </span>
+                                    </div>
+                                    <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.4rem 0' }}>
+                                        {card.title}
+                                    </h3>
+                                    <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.25rem' }}>
+                                        {card.description}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setSubTab(card.id)}
+                                    style={{
+                                        width: '100%', padding: '0.8rem 1rem', borderRadius: '0.75rem',
+                                        background: card.btnBg, color: '#ffffff',
+                                        border: 'none', fontWeight: '800', fontSize: '0.9rem', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                                        boxShadow: `0 4px 12px ${card.tint}40`, transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Open Module <ChevronRight size={16} />
+                                </button>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div style={{ maxWidth: activeSubTab === 'user-management' ? '1200px' : '900px', margin: '0 auto', width: '100%', padding: '2rem', transition: 'max-width 0.3s ease' }}>
+        <div style={{ maxWidth: subTab === 'user-management' ? '1550px' : '900px', margin: '0 auto', width: '100%', padding: '1rem 0.5rem 2rem', transition: 'max-width 0.3s ease' }}>
+            {/* Top Back Navigation Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', padding: '0.75rem 1.25rem', background: '#ffffff', borderRadius: '1rem', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
+                <button
+                    onClick={() => setSubTab('hub')}
+                    style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.45rem 0.9rem', borderRadius: '0.6rem',
+                        background: '#ef4444', color: '#ffffff', border: 'none',
+                        fontWeight: '700', fontSize: '0.88rem', cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+                    }}
+                >
+                    <ArrowLeft size={16} /> Back to Admin Cards
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '600' }}>Admin Module:</span>
+                    <select
+                        value={subTab}
+                        onChange={(e) => setSubTab(e.target.value)}
+                        style={{
+                            padding: '0.45rem 0.85rem', borderRadius: '0.6rem', border: '1px solid #cbd5e1',
+                            fontWeight: '700', fontSize: '0.85rem', background: '#f8fafc', color: '#0f172a',
+                            outline: 'none', cursor: 'pointer'
+                        }}
+                    >
+                        <option value="traffic-monitoring">Traffic Monitoring</option>
+                        <option value="user-management">User Management</option>
+                        <option value="feature-campaign">Feature Campaign Email</option>
+                        <option value="master-evaluation">Master Criteria</option>
+                        <option value="setup-instructor">Promote Instructor</option>
+                        <option value="messages">Contact Messages</option>
+                        <option value="impromptu-management">Impromptu Topics</option>
+                        <option value="email-coach">Email Coach</option>
+                        <option value="email-history">Email History</option>
+                    </select>
+                </div>
+            </div>
+
             <div style={{ width: '100%' }}>
                 <AnimatePresence mode="wait">
 
                     {/* ══════════════ SETUP INSTRUCTOR ══════════════ */}
-                    {activeSubTab === 'setup-instructor' && (
+                    {subTab === 'setup-instructor' && (
                         <motion.div
                             key="setup-instructor"
                             initial={{ opacity: 0, x: 20 }}
@@ -619,7 +992,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                     )}
 
                     {/* ══════════════ MASTER EVALUATION ══════════════ */}
-                    {activeSubTab === 'master-evaluation' && (
+                    {subTab === 'master-evaluation' && (
                         <motion.div
                             key="master-evaluation"
                             initial={{ opacity: 0, x: 20 }}
@@ -889,7 +1262,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                     )}
 
                     {/* ══════════════ USER MANAGEMENT ══════════════ */}
-                    {activeSubTab === 'user-management' && (
+                    {subTab === 'user-management' && (
                         <motion.div
                             key="user-management"
                             initial={{ opacity: 0, x: 20 }}
@@ -935,25 +1308,27 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                 </div>
                             ) : (
                                 <div style={{ overflowX: 'auto', borderRadius: '0.5rem', border: '1px solid var(--glass-border)' }}>
-                                    <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                                         <thead>
                                             <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
-                                                <th style={{ padding: '1rem' }}>Name</th>
-                                                <th style={{ padding: '1rem' }}>Email</th>
-                                                <th style={{ padding: '1rem' }}>Role</th>
-                                                <th style={{ padding: '1rem' }}>Sub. Plan</th>
-                                                <th style={{ padding: '1rem' }}>Joined</th>
-                                                <th style={{ padding: '1rem' }}>Speeches (Mo | Tot)</th>
-                                                <th style={{ padding: '1rem', textAlign: 'center' }}>Update Role</th>
-                                                <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Name</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Email</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Role</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Sub. Plan</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Joined</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Prepared (Mo | Tot)</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Speech Studio (Mo | Tot)</th>
+                                                <th style={{ padding: '0.75rem 0.85rem' }}>Impromptu (Mo | Tot)</th>
+                                                <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Update Role</th>
+                                                <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {usersList.map((u, i) => (
                                                 <tr key={u.userId} style={{ borderBottom: i === usersList.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                    <td style={{ padding: '1rem', fontWeight: '500' }}>{u.name}</td>
-                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{u.email}</td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td style={{ padding: '0.75rem 0.85rem', fontWeight: '500' }}>{u.name}</td>
+                                                    <td style={{ padding: '0.75rem 0.85rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                                                    <td style={{ padding: '0.75rem 0.85rem' }}>
                                                         <span style={{
                                                             padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600',
                                                             background: u.role === 'super_admin' ? 'rgba(239, 68, 68, 0.1)' : u.role === 'instructor' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(16, 185, 129, 0.1)',
@@ -962,9 +1337,9 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                             {u.role.toUpperCase()}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>{u.plan === 'pro' || u.plan === 'Pro' ? <span style={{ color: '#8b5cf6', fontWeight: '700' }}>PRO</span> : <span style={{ color: 'var(--text-secondary)' }}>FREE</span>}</td>
-                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
-                                                    <td style={{ padding: '1rem', fontWeight: '600' }}>
+                                                    <td style={{ padding: '0.75rem 0.85rem' }}>{u.plan === 'pro' || u.plan === 'Pro' ? <span style={{ color: '#8b5cf6', fontWeight: '700' }}>PRO</span> : <span style={{ color: 'var(--text-secondary)' }}>FREE</span>}</td>
+                                                    <td style={{ padding: '0.75rem 0.85rem', color: 'var(--text-secondary)' }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
+                                                    <td style={{ padding: '0.75rem 0.85rem', fontWeight: '600' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                             {u.monthlySpeechCount} <span style={{ color: 'var(--text-secondary)' }}>|</span> {u.totalSpeechCount}
                                                             <button 
@@ -979,7 +1354,17 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                             </button>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <td style={{ padding: '0.75rem 0.85rem' }}>
+                                                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: '0.5rem', background: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', fontWeight: '700', fontSize: '0.82rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                                            {u.studioMonthlyCount || 0} <span style={{ color: 'var(--text-secondary)', fontWeight: '400' }}>|</span> {u.studioCount || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '0.75rem 0.85rem' }}>
+                                                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: '0.5rem', background: 'rgba(56, 189, 248, 0.08)', color: '#0284c7', fontWeight: '700', fontSize: '0.82rem', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                                                            {u.impromptuMonthlyCount || 0} <span style={{ color: 'var(--text-secondary)', fontWeight: '400' }}>|</span> {u.impromptuCount || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
                                                         <select
                                                             value={u.role}
                                                             onChange={(e) => handleUpdateUserRoleOption(u.email, e.target.value)}
@@ -1019,7 +1404,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                         </motion.div>
                     )}
                     {/* ══════════════ EMAIL COACH ══════════════ */}
-                    {activeSubTab === 'email-coach' && (
+                    {subTab === 'email-coach' && (
                         <motion.div
                             key="email-coach"
                             initial={{ opacity: 0, x: 20 }}
@@ -1164,7 +1549,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                     )}
 
                     {/* ══════════════ MESSAGES ══════════════ */}
-                    {activeSubTab === 'messages' && (
+                    {subTab === 'messages' && (
                         <motion.div
                             key="messages"
                             initial={{ opacity: 0, x: 20 }}
@@ -1435,7 +1820,8 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                         </motion.div>
                     )}
 
-                    {activeSubTab === 'email-history' && (
+                    {/* ══════════════ EMAIL HISTORY ══════════════ */}
+                    {subTab === 'email-history' && (
                         <motion.div
                             key="email-history"
                             initial={{ opacity: 0, x: 20 }}
@@ -1612,8 +1998,30 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                                 {msg.subject || '(No Subject)'}
                                                             </div>
                                                         </div>
-                                                        <div style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                                                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleResendEmail(msg, e)}
+                                                                disabled={resendingId === msg.communicationId}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
+                                                                    padding: '0.4rem 0.85rem', borderRadius: '0.5rem',
+                                                                    background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
+                                                                    border: '1px solid rgba(99, 102, 241, 0.25)', fontWeight: '700',
+                                                                    fontSize: '0.8rem', cursor: resendingId === msg.communicationId ? 'not-allowed' : 'pointer',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                            >
+                                                                {resendingId === msg.communicationId ? (
+                                                                    <Loader2 className="spinner" size={14} />
+                                                                ) : (
+                                                                    <RefreshCw size={14} />
+                                                                )}
+                                                                Resend
+                                                            </button>
+                                                            <div style={{ color: 'var(--text-secondary)' }}>
+                                                                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -1667,6 +2075,41 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                                                     }}>
                                                                         {msg.body || '(No content body)'}
                                                                     </div>
+
+                                                                    {/* Resend Action Bar */}
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                                                        {resendStatus[msg.communicationId]?.text ? (
+                                                                            <div style={{
+                                                                                fontSize: '0.85rem', fontWeight: '700',
+                                                                                color: resendStatus[msg.communicationId].type === 'success' ? '#16a34a' : resendStatus[msg.communicationId].type === 'error' ? '#dc2626' : '#2563eb'
+                                                                            }}>
+                                                                                {resendStatus[msg.communicationId].text}
+                                                                            </div>
+                                                                        ) : <div />}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => handleResendEmail(msg, e)}
+                                                                            disabled={resendingId === msg.communicationId}
+                                                                            style={{
+                                                                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                                                                padding: '0.6rem 1.25rem', borderRadius: '0.6rem',
+                                                                                background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#ffffff',
+                                                                                border: 'none', fontWeight: '700', fontSize: '0.88rem',
+                                                                                cursor: resendingId === msg.communicationId ? 'not-allowed' : 'pointer',
+                                                                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
+                                                                            }}
+                                                                        >
+                                                                            {resendingId === msg.communicationId ? (
+                                                                                <>
+                                                                                    <Loader2 className="spinner" size={16} /> Resending...
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <RefreshCw size={16} /> Resend Email to {msg.coachEmail}
+                                                                                </>
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </motion.div>
                                                         )}
@@ -1691,7 +2134,8 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                         </motion.div>
                     )}
 
-                    {activeSubTab === 'impromptu-management' && (
+                    {/* ══════════════ IMPROMPTU MANAGEMENT ══════════════ */}
+                    {subTab === 'impromptu-management' && (
                         <motion.div
                             key="impromptu-management"
                             initial={{ opacity: 0, x: 20 }}
@@ -1954,7 +2398,8 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                         </motion.div>
                     )}
 
-                    {activeSubTab === 'traffic-monitoring' && (
+                    {/* ══════════════ TRAFFIC MONITORING ══════════════ */}
+                    {subTab === 'traffic-monitoring' && (
                         <motion.div
                             key="traffic-monitoring"
                             initial={{ opacity: 0, x: 20 }}
@@ -1974,7 +2419,7 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                     </div>
                                     <div>
                                         <h3 className="gradient-text" style={{ fontSize: '2rem', fontWeight: '800', margin: 0 }}>Traffic Monitoring</h3>
-                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Track visitor traffic, IP addresses, location geolocation, and usage analytics for practiceyourspeech.com.</p>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Track visitor traffic, IP addresses, location geolocation, and usage analytics for practiceyourspeech.com (IPs deduplicated within a 4-hour window).</p>
                                     </div>
                                 </div>
                                 <button
@@ -2124,6 +2569,315 @@ Feel free to drop us a message anytime at https://practiceyourspeech.com/contact
                                     </table>
                                 </div>
                             )}
+                        </motion.div>
+                    )}
+
+                    {/* ══════════════ FEATURE CAMPAIGN EMAIL ══════════════ */}
+                    {subTab === 'feature-campaign' && (
+                        <motion.div
+                            key="feature-campaign"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="glass-panel"
+                            style={{ padding: '2.5rem', borderRadius: '1.5rem', color: 'var(--text-primary)', background: '#ffffff' }}
+                        >
+                            {/* Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{
+                                        width: '48px', height: '48px', borderRadius: '1rem',
+                                        background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <Sparkles size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="gradient-text" style={{ fontSize: '2rem', fontWeight: '800', margin: 0 }}>Feature Campaign Email</h3>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Send a feature announcement showcase email detailing all recent platform tools to selected students in DynamoDB.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={fetchUsersList}
+                                    disabled={isLoadingUsers}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        padding: '0.6rem 1.25rem', borderRadius: '0.6rem',
+                                        background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
+                                        border: '1px solid rgba(99, 102, 241, 0.2)', fontWeight: '600',
+                                        cursor: 'pointer', fontSize: '0.9rem'
+                                    }}
+                                >
+                                    <RefreshCcw size={16} className={isLoadingUsers ? "spinner" : ""} /> Refresh Users List
+                                </button>
+                            </div>
+
+                            {/* Status Feedback Message */}
+                            {campaignMsg.text && (
+                                <div style={{
+                                    display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                                    padding: '1.2rem', borderRadius: '0.8rem', marginBottom: '1.5rem',
+                                    background: campaignMsg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                    color: campaignMsg.type === 'error' ? '#ef4444' : '#15803d',
+                                    border: `1px solid ${campaignMsg.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'}`,
+                                    fontSize: '0.95rem'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
+                                        <AlertCircle size={20} />
+                                        {campaignMsg.text}
+                                    </div>
+                                    {campaignMsg.results?.length > 0 && (
+                                        <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
+                                            {campaignMsg.results.map((r, idx) => (
+                                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.6rem', background: '#ffffff', borderRadius: '0.4rem', border: '1px solid #e2e8f0' }}>
+                                                    <span>{r.email}</span>
+                                                    <span style={{ fontWeight: '700', color: r.status === 'SUCCESS' ? '#22c55e' : '#ef4444' }}>
+                                                        {r.status === 'SUCCESS' ? '✓ Dispatched via SES (Check Inbox/Spam)' : `✗ Failed (${r.error})`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Two-Column Campaign Workspace */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '2rem' }}>
+                                
+                                {/* ══ COLUMN 1: STUDENT / USER RECIPIENT SELECTOR ══ */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700' }}>
+                                            1. Select Recipients ({selectedCampaignEmails.size} selected)
+                                        </h4>
+                                        <button
+                                            onClick={toggleSelectAllCampaignUsers}
+                                            style={{
+                                                padding: '0.4rem 0.8rem', borderRadius: '0.5rem',
+                                                background: '#6366f1', color: '#ffffff', border: 'none',
+                                                fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
+                                            }}
+                                        >
+                                            {getFilteredCampaignUsers().every(u => selectedCampaignEmails.has(u.email)) ? 'Deselect All' : `Select All (${getFilteredCampaignUsers().length})`}
+                                        </button>
+                                    </div>
+
+                                    {/* Search Bar */}
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <div style={{ position: 'relative', flex: 1 }}>
+                                            <input
+                                                type="text"
+                                                placeholder="Search student email or name..."
+                                                value={campaignSearch}
+                                                onChange={(e) => setCampaignSearch(e.target.value)}
+                                                style={{
+                                                    width: '100%', padding: '0.6rem 0.8rem 0.6rem 2.4rem',
+                                                    borderRadius: '0.6rem', border: '1px solid #cbd5e1',
+                                                    fontSize: '0.85rem', outline: 'none'
+                                                }}
+                                            />
+                                            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Role Pill Filters */}
+                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                        {['all', 'student', 'instructor', 'super_admin'].map(r => (
+                                            <button
+                                                key={r}
+                                                onClick={() => setCampaignRoleFilter(r)}
+                                                style={{
+                                                    padding: '0.25rem 0.65rem', borderRadius: '999px',
+                                                    border: '1px solid #cbd5e1', fontSize: '0.75rem',
+                                                    fontWeight: '600', textTransform: 'capitalize', cursor: 'pointer',
+                                                    background: campaignRoleFilter === r ? '#6366f1' : '#f8fafc',
+                                                    color: campaignRoleFilter === r ? '#ffffff' : '#64748b'
+                                                }}
+                                            >
+                                                {r}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* User Scroll Checklist */}
+                                    <div style={{
+                                        maxHeight: '400px', overflowY: 'auto', borderRadius: '0.8rem',
+                                        border: '1px solid #e2e8f0', background: '#f8fafc', padding: '0.5rem'
+                                    }}>
+                                        {isLoadingUsers ? (
+                                            <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                                <Loader2 className="spinner" size={24} style={{ marginBottom: '0.5rem' }} />
+                                                <p style={{ margin: 0, fontSize: '0.85rem' }}>Loading user list...</p>
+                                            </div>
+                                        ) : getFilteredCampaignUsers().length === 0 ? (
+                                            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                                                No users matching filter criteria.
+                                            </div>
+                                        ) : (
+                                            getFilteredCampaignUsers().map((u, i) => {
+                                                const isSelected = selectedCampaignEmails.has(u.email);
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        onClick={() => toggleCampaignUser(u.email)}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                            padding: '0.65rem 0.85rem', borderRadius: '0.6rem', marginBottom: '0.35rem',
+                                                            background: isSelected ? 'rgba(99, 102, 241, 0.08)' : '#ffffff',
+                                                            border: `1px solid ${isSelected ? 'rgba(99, 102, 241, 0.3)' : '#f1f5f9'}`,
+                                                            cursor: 'pointer', transition: 'all 0.15s ease'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => {}}
+                                                                style={{ width: '16px', height: '16px', accentColor: '#6366f1', cursor: 'pointer' }}
+                                                            />
+                                                            <div style={{ overflow: 'hidden' }}>
+                                                                <div style={{ fontWeight: '600', fontSize: '0.88rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {u.name || u.email}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {u.email}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span style={{
+                                                            fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '0.4rem',
+                                                            fontWeight: '700', textTransform: 'uppercase',
+                                                            background: u.role === 'super_admin' ? 'rgba(168, 85, 247, 0.15)' : u.role === 'instructor' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                                                            color: u.role === 'super_admin' ? '#a855f7' : u.role === 'instructor' ? '#3b82f6' : '#64748b'
+                                                        }}>
+                                                            {u.role || 'student'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
+                                    {/* Additional External Recipients Input */}
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.35rem' }}>
+                                            Additional / External Emails ({getParsedExternalEmails().length} valid)
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            value={externalEmailsInput}
+                                            onChange={(e) => setExternalEmailsInput(e.target.value)}
+                                            placeholder="Enter external emails not in database (separated by commas or newlines)..."
+                                            style={{
+                                                width: '100%', padding: '0.65rem 0.85rem', borderRadius: '0.65rem',
+                                                border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none',
+                                                color: '#0f172a', resize: 'vertical', fontFamily: 'inherit'
+                                            }}
+                                        />
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                            💡 You can paste any external recipient emails here (e.g. prospective students, external coaches).
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ══ COLUMN 2: CAMPAIGN MESSAGE & FEATURE SHOWCASE PREVIEW ══ */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700' }}>
+                                        2. Compose Campaign & Feature Showcase
+                                    </h4>
+
+                                    {/* Subject Input */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.35rem' }}>
+                                            Email Subject Line
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={campaignSubject}
+                                            onChange={(e) => setCampaignSubject(e.target.value)}
+                                            placeholder="Subject line..."
+                                            style={{
+                                                width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem',
+                                                border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', color: '#0f172a', fontWeight: '600'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Custom Personal Note */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#475569', marginBottom: '0.35rem' }}>
+                                            Custom Personal Note (Optional)
+                                        </label>
+                                        <textarea
+                                            rows={2}
+                                            value={campaignCustomNote}
+                                            onChange={(e) => setCampaignCustomNote(e.target.value)}
+                                            placeholder="Add a custom note from your instructor or administration..."
+                                            style={{
+                                                width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem',
+                                                border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', color: '#0f172a', resize: 'vertical'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Fully Editable Campaign Email Body */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                            <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#475569' }}>
+                                                Campaign Email Content (Fully Editable)
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCampaignBody(DEFAULT_CAMPAIGN_BODY)}
+                                                style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}
+                                            >
+                                                Reset Default Text
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            rows={12}
+                                            value={campaignBody}
+                                            onChange={(e) => setCampaignBody(e.target.value)}
+                                            placeholder="Write your campaign announcement content here..."
+                                            style={{
+                                                width: '100%', padding: '0.85rem 1rem', borderRadius: '0.75rem',
+                                                border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', color: '#0f172a',
+                                                resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.6'
+                                            }}
+                                        />
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.3rem' }}>
+                                            💡 Feel free to edit, add, or customize any text above before sending.
+                                        </div>
+                                    </div>
+
+                                    {/* Send Campaign Button */}
+                                    <button
+                                        onClick={handleSendCampaignEmail}
+                                        disabled={isSendingCampaign || (selectedCampaignEmails.size === 0 && getParsedExternalEmails().length === 0)}
+                                        style={{
+                                            padding: '1rem 1.5rem', borderRadius: '0.8rem',
+                                            background: (selectedCampaignEmails.size === 0 && getParsedExternalEmails().length === 0) ? '#94a3b8' : 'linear-gradient(135deg, #6366f1, #a855f7)',
+                                            color: '#ffffff', border: 'none', fontWeight: '800', fontSize: '1rem',
+                                            cursor: (selectedCampaignEmails.size === 0 && getParsedExternalEmails().length === 0) ? 'not-allowed' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                                            boxShadow: (selectedCampaignEmails.size > 0 || getParsedExternalEmails().length > 0) ? '0 10px 20px rgba(99, 102, 241, 0.3)' : 'none',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {isSendingCampaign ? (
+                                            <>
+                                                <Loader2 className="spinner" size={20} />
+                                                Sending Campaign...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Mail size={20} />
+                                                Send Feature Campaign Email ({new Set([...selectedCampaignEmails, ...getParsedExternalEmails()]).size} Total Recipients)
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

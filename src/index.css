@@ -212,6 +212,8 @@ button.nav-btn {
   color: #000000 !important;
   font-weight: 700 !important;
   border: 1px solid transparent !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 button.nav-btn:hover {
